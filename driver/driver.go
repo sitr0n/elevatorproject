@@ -3,6 +3,7 @@ package driver
 import ("fmt"
 	"sync"
 	"net"
+	"time"
 )
 
 var _initialized bool = false
@@ -38,11 +39,16 @@ func FSM(f <- chan int, e Elevator) {
 		select {
 		case floor := <- f
 			if (floor != prev_floor) {
+				SetFloorIndicator(f)
 				if (e.Stops[floor] > 0) {
-					
+					SetMotorDirection(MD_Stop)
+					SetDoorOpenLamp(true)
+					time.Sleep(5*time.Second)
+					SetDoorOpenLamp(false)
 				}
 			}
-			
+			prev_floor = floor
+		case button := <-
 			
 		}
 	}
