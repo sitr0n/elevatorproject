@@ -2,6 +2,7 @@ package main
 
 import ("fmt"
 	"./order"
+	"./driver"
 )
 
 func PollButtons() {
@@ -34,6 +35,18 @@ func main() {
 	elv.CurrentFloor = 1
 	order.Order_complete(elv)
 	order.Order_accept(elv, ordr)
+	
+	ch_floors := make(chan int)
+	ch_buttons := make(chan driver.ButtonEvent)
+	ch_obstr   := make(chan bool)
+	ch_stop    := make(chan bool)
+
+	driver.Init("localhost:15657", 4)
+	go driver.FSM(ch_floors, elv)
+	go driver.PollButtons(ch_buttons)
+	go driver.PollFloorSensor(ch_floors)
+	go driver.PollObstructionSwitch(ch_obstr)
+	go driver.PollStopButton(ch_stop)
 	
 	
 }
