@@ -42,7 +42,8 @@ func main() {
 	ch_stop    := make(chan bool)
 
 	driver.Init("localhost:15657", 4)
-	go driver.FSM(ch_floors, elv)
+	go driver.Button_manager(ch_buttons, &elv)
+	go driver.Event_manager(ch_floors, &elv)
 	go driver.PollButtons(ch_buttons)
 	go driver.PollFloorSensor(ch_floors)
 	go driver.PollObstructionSwitch(ch_obstr)

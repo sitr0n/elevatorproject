@@ -33,25 +33,74 @@ type ButtonEvent struct {
 	Button ButtonType
 }
 
-func FSM(f <- chan int, e Elevator) {
+func Button_manager(b <- chan driver.ButtonEvent, e *Elevator) {
+	for {
+		select {
+		case event := <- b
+			if (event.Button == BT_Cab) {
+				e.Stops[event.Floor]
+			}
+			else {
+				//TODO: Broadcast corresponding order
+				//TODO: Evaluate all elevators and decide which one taking the order
+				//TODO: Update corresponding elevator struct -> Stops[event.Floor]
+			}
+		}
+	}
+}
+
+func Event_manager(f <- chan int, e *Elevator) {
 	prev_floor := -1
 	for {
 		select {
 		case floor := <- f
 			if (floor != prev_floor) {
-				SetFloorIndicator(f)
+				SetFloorIndicator(floor)
 				if (e.Stops[floor] > 0) {
 					SetMotorDirection(MD_Stop)
 					SetDoorOpenLamp(true)
 					time.Sleep(5*time.Second)
 					SetDoorOpenLamp(false)
 				}
+				motor_direction := Find_next_stop(e)
+				SetMotorDirection(motor_direction)
 			}
 			prev_floor = floor
-		case button := <-
-			
 		}
 	}
+}
+
+func Find_next_stop(e Elevator) MotorDirection {
+	direction := MD_Stop
+	if (e.Dir) {
+		for i := e.Floor; i < 4; i++ {
+			if (e.Stops[i] > 0) {
+				direction = MD_Up
+				return direction
+			}
+		}
+		for i := e.Floor; i > 0; i-- {
+			if (e.Stops[i] > 0) {
+				direction = MD_Down
+				return direction
+			}
+		}
+	}
+	else {
+		for i := e.Floor; i > 0; i-- {
+			if (e.Stops[i] > 0) {
+				direction = MD_Down
+				return direction
+			}
+		}
+		for i := e.Floor; i < 4; i++ {
+			if (e.Stops[i] > 0) {
+				direction = MD_Up
+				return direction
+			}
+		}
+	}
+	return direction
 }
 
 func Init(addr string, numFloors int) {
