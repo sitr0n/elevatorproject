@@ -10,7 +10,7 @@ var _initialized bool = false
 var _numFloors int = 4
 var _mtx sync.Mutex
 var _conn net.Conn
-var d elevio.MotorDirection = elevio.MD_Up
+//var d elevio.MotorDirection = elevio.MD_Up
 
 type MotorDirection int
 
@@ -33,14 +33,13 @@ type ButtonEvent struct {
 	Button ButtonType
 }
 
-func Button_manager(b <- chan driver.ButtonEvent, e *Elevator) {
+func Button_manager(b <- chan ButtonEvent, e *order.Elevator) {
 	for {
 		select {
-		case event := <- b
+		case event := <- b:
 			if (event.Button == BT_Cab) {
 				e.Stops[event.Floor]
-			}
-			else {
+			} else {
 				//TODO: Broadcast corresponding order
 				//TODO: Evaluate all elevators and decide which one taking the order
 				//TODO: Update corresponding elevator struct -> Stops[event.Floor]
@@ -53,7 +52,7 @@ func Event_manager(f <- chan int, e *Elevator) {
 	prev_floor := -1
 	for {
 		select {
-		case floor := <- f
+		case floor := <- f:
 			if (floor != prev_floor) {
 				SetFloorIndicator(floor)
 				if (e.Stops[floor] > 0) {
@@ -85,8 +84,7 @@ func Find_next_stop(e Elevator) MotorDirection {
 				return direction
 			}
 		}
-	}
-	else {
+	} else {
 		for i := e.Floor; i > 0; i-- {
 			if (e.Stops[i] > 0) {
 				direction = MD_Down
