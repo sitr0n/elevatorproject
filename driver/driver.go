@@ -44,6 +44,7 @@ func Button_manager(b <- chan ButtonEvent, e *m.Elevator) {
 		case event := <- b:
 			if (event.Button == BT_Cab) {
 				e.Stops[event.Floor] = 1
+				fmt.Println(e.Stops)
 			} else {
 				//TODO: Broadcast corresponding order
 				//TODO: Evaluate all elevators and decide which one taking the order
