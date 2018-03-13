@@ -1,31 +1,37 @@
 package order
 
-import "fmt"
+//import "fmt"
 
 const FLOORS = 4
 //const STOP_WEIGHT = 2
 
+type MotorDirection int
 
+const (
+	MD_Up   MotorDirection = 1
+	MD_Down                = -1
+	MD_Stop                = 0
+)
 
 type Order struct {
-	Dir bool
+	Dir MotorDirection
 	Floor int
 }
 
 type Elevator struct {
-	Dir bool
+	Dir MotorDirection
 	CurrentFloor int
 	Stops [FLOORS]int
 }
 
 func Order_complete(e Elevator) {
 	e.Stops[e.CurrentFloor] = 0
-	fmt.Println(e.Stops)
+	//fmt.Println(e.Stops)
 }
 
 func Order_accept(e Elevator, o Order) {
 	e.Stops[o.Floor] = 1
-	fmt.Println(e.Stops)
+	//fmt.Println(e.Stops)
 }
 
 func Evaluate(e Elevator, o Order) int {
@@ -34,7 +40,7 @@ func Evaluate(e Elevator, o Order) int {
 	if (distance < 0) {
 		distance *= -1
 	}
-	if (e.Dir == true) {
+	if (e.Dir == MD_Up) {
 		if (o.Floor > e.CurrentFloor) {
 			for i := e.CurrentFloor; i < o.Floor; i++ {
 				value += 2*e.Stops[i]
