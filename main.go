@@ -5,25 +5,6 @@ import ("fmt"
 	"./driver"
 )
 
-func PollButtons() {
-	// IF BUTTONPRESS
-	//	Broadcast corresponding order
-	//	v1 = order.Evaluate(elev1, order)
-	//	v2 = order.Evaluate(elev2, order)
-	//	v3 = order.Evaluate(elev3, order)
-	//	update elevN.Stops[order.Floor]
-}
-
-func PollFloorSensor() {
-	// IF SENSOR
-	//	IF elev.Stops[Floor] == 1 || elev.Floor == 4
-	//		stop()
-	//	IF elev.Direction == UP
-	//		for i := elev.Floor; i < FLOORS; i++
-	//			if elev.Stops[i] == 1
-	//				continue() / break
-	//			
-}
 
 func main() {
 	stp := [order.FLOORS]int{0,1,1,0}
@@ -43,11 +24,14 @@ func main() {
 
 	driver.Init("localhost:15657", 4)
 	go driver.Button_manager(ch_buttons, &elv)
-	go driver.Event_manager(ch_floors, &elv)
+	go driver.Event_manager(ch_floors, elv, &elv)
 	go driver.PollButtons(ch_buttons)
 	go driver.PollFloorSensor(ch_floors)
 	go driver.PollObstructionSwitch(ch_obstr)
 	go driver.PollStopButton(ch_stop)
 	
+	for {
+		
+	}
 	
 }

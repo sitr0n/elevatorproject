@@ -5,12 +5,17 @@ import ("fmt"
 	"net"
 	"time"
 )
+import m "../order"
+
+const _pollRate = 20 * time.Millisecond
 
 var _initialized bool = false
 var _numFloors int = 4
 var _mtx sync.Mutex
 var _conn net.Conn
 //var d elevio.MotorDirection = elevio.MD_Up
+
+
 
 type MotorDirection int
 
@@ -33,12 +38,12 @@ type ButtonEvent struct {
 	Button ButtonType
 }
 
-func Button_manager(b <- chan ButtonEvent, e *order.Elevator) {
+func Button_manager(b <- chan ButtonEvent, e *m.Elevator) {
 	for {
 		select {
 		case event := <- b:
 			if (event.Button == BT_Cab) {
-				e.Stops[event.Floor]
+				e.Stops[event.Floor] = 1
 			} else {
 				//TODO: Broadcast corresponding order
 				//TODO: Evaluate all elevators and decide which one taking the order
@@ -48,7 +53,7 @@ func Button_manager(b <- chan ButtonEvent, e *order.Elevator) {
 	}
 }
 
-func Event_manager(f <- chan int, e *Elevator) {
+func Event_manager(f <- chan int, e m.Elevator, ep *m.Elevator) {
 	prev_floor := -1
 	for {
 		select {
@@ -69,29 +74,29 @@ func Event_manager(f <- chan int, e *Elevator) {
 	}
 }
 
-func Find_next_stop(e Elevator) MotorDirection {
-	direction := MD_Stop
+func Find_next_stop(e m.Elevator) MotorDirection {
+	var direction MotorDirection = MD_Stop
 	if (e.Dir) {
-		for i := e.Floor; i < 4; i++ {
+		for i := e.CurrentFloor; i < 4; i++ {
 			if (e.Stops[i] > 0) {
 				direction = MD_Up
 				return direction
 			}
 		}
-		for i := e.Floor; i > 0; i-- {
+		for i := e.CurrentFloor; i > 0; i-- {
 			if (e.Stops[i] > 0) {
 				direction = MD_Down
 				return direction
 			}
 		}
 	} else {
-		for i := e.Floor; i > 0; i-- {
+		for i := e.CurrentFloor; i > 0; i-- {
 			if (e.Stops[i] > 0) {
 				direction = MD_Down
 				return direction
 			}
 		}
-		for i := e.Floor; i < 4; i++ {
+		for i := e.CurrentFloor; i < 4; i++ {
 			if (e.Stops[i] > 0) {
 				direction = MD_Up
 				return direction
