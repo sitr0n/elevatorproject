@@ -6,7 +6,7 @@ import ("fmt"
 )
 import order "../order"
 
-func SaveState(s <- chan bool, state *order.Elevator) {
+func Save(s <- chan bool, state *order.Elevator) {
 	for {
 		select {
 		case <- s :
@@ -21,7 +21,7 @@ func SaveState(s <- chan bool, state *order.Elevator) {
 	}
 }
 
-func LoadState(state *order.Elevator) {
+func Load(state *order.Elevator) {
 	fmt.Println("--------------------------")
 	fmt.Println("Loading state:")
 	fmt.Println("Previous state:\t", state.Stops)

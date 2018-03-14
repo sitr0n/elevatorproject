@@ -18,7 +18,7 @@ func main() {
 	order.Order_complete(elv)
 	order.Order_accept(elv, ordr)
 
-	state.LoadState(&elv)
+	state.Load(&elv)
 	
 	ch_floors := make(chan int)
 	ch_buttons := make(chan driver.ButtonEvent)
@@ -33,7 +33,8 @@ func main() {
 	go driver.PollFloorSensor(ch_floors)
 	go driver.PollObstructionSwitch(ch_obstr)
 	go driver.PollStopButton(ch_stop)
-	go state.SaveState(ch_sChange, &elv)
+	
+	go state.Save(ch_sChange, &elv)
 	
 	
 	
