@@ -8,37 +8,30 @@ import ("fmt"
 
 
 func main() {
-	stp := [order.FLOORS]int{0,0,0,0}
-	ordr := order.Order{Dir: order.MD_Up, Floor: 1}
-	elv := order.Elevator{Dir: order.MD_Up, CurrentFloor: 0, Stops: stp}
-	fmt.Println("TEST elevator: ", elv)
-	a := order.Evaluate (elv, ordr)
-	fmt.Println("TEST evaluate: ", a)
-	elv.CurrentFloor = 1
-	order.Order_complete(elv)
-	order.Order_accept(elv, ordr)
-
-	state.Load(&elv)
+	elevator := order.Elevator{}
+	state.Load(&elevator)
 	
-	ch_floors := make(chan int)
+	fmt.Println("--------------------------")
+	fmt.Println("    STARTING ELEVATOR     ")
+	fmt.Println("--------------------------")
+	fmt.Println("--------------------------")
+	
+	ch_floors  := make(chan int)
 	ch_buttons := make(chan driver.ButtonEvent)
 	ch_obstr   := make(chan bool)
 	ch_stop    := make(chan bool)
 	ch_sChange := make(chan bool)
+	ch_exit	   := make(chan bool)
 
 	driver.Init("localhost:15657", 4)
-	go driver.Button_manager(ch_buttons, ch_sChange, &elv)
-	go driver.Event_manager(ch_floors, ch_sChange, &elv)
+	go driver.Button_manager(ch_buttons, ch_sChange, &elevator)
+	go driver.Event_manager(ch_floors, ch_sChange, &elevator)
 	go driver.PollButtons(ch_buttons)
 	go driver.PollFloorSensor(ch_floors)
 	go driver.PollObstructionSwitch(ch_obstr)
 	go driver.PollStopButton(ch_stop)
 	
-	go state.Save(ch_sChange, &elv)
+	go state.Save(ch_sChange, &elevator)
 	
-	
-	
-	for {
-		
-	}
+	<- ch_exit
 }
