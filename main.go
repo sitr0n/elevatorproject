@@ -4,12 +4,21 @@ import ("fmt"
 	"./order"
 	"./driver"
 	"./state"
+	"os/exec"
+	"time"
 )
 
 
 func main() {
 	elevator := order.Elevator{}
 	state.Load(&elevator)
+	
+	cmd := exec.Command("gnome-terminal", "-x", "sh", "-c", "ElevatorServer;")
+	err := cmd.Start()
+	state.Check(err)
+	
+	fmt.Println("Starting ElevatorServer...")
+	time.Sleep(1*time.Second)
 	
 	fmt.Println("--------------------------")
 	fmt.Println("    STARTING ELEVATOR     ")
