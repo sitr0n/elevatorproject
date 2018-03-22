@@ -5,7 +5,7 @@ import ("fmt"
 	"net"
 	"time"
 )
-import m "../order"
+import m "../state"
 
 const _pollRate = 20 * time.Millisecond
 
@@ -16,9 +16,7 @@ var _conn net.Conn
 //var d elevio.MotorDirection = elevio.MD_Up
 
 
-
 type ButtonType int
-
 const (
 	BT_HallUp   ButtonType = 0
 	BT_HallDown            = 1

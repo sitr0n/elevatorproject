@@ -1,53 +1,41 @@
 package order
 
-//import "fmt"
+import state "../state"
 
 const FLOORS = 4
-//const STOP_WEIGHT = 2
+const STOP_WEIGHT = 5
 
-type MotorDirection int
-
-const (
-	MD_Up   MotorDirection = 1
-	MD_Down                = -1
-	MD_Stop                = 0
-)
 
 type Order struct {
-	Dir MotorDirection
+	Dir state.MotorDirection
 	Floor int
 }
 
-type Elevator struct {
-	Dir MotorDirection
-	CurrentFloor int
-	Stops [FLOORS]int
-}
 
-func Order_complete(e Elevator) {
+func Order_complete(e state.Elevator) {
 	e.Stops[e.CurrentFloor] = 0
 	//fmt.Println(e.Stops)
 }
 
-func Order_accept(e Elevator, o Order) {
+func Order_accept(e state.Elevator, o Order) {
 	e.Stops[o.Floor] = 1
 	//fmt.Println(e.Stops)
 }
 
-func Evaluate(e Elevator, o Order) int {
+func Evaluate(e state.Elevator, o Order) int {
 	value := 0
 	distance := o.Floor - e.CurrentFloor
 	if (distance < 0) {
 		distance *= -1
 	}
-	if (e.Dir == MD_Up) {
+	if (e.Dir == state.MD_Up) {
 		if (o.Floor > e.CurrentFloor) {
 			for i := e.CurrentFloor; i < o.Floor; i++ {
-				value += 2*e.Stops[i]
+				value += e.Stops[i] * STOP_WEIGHT
 			}
 		} else {
 			for i := o.Floor; i < FLOORS; i++ {
-				value += 2*e.Stops[i]
+				value += e.Stops[i] * STOP_WEIGHT
 			}
 		}
 		if (e.Dir != o.Dir) {
@@ -63,11 +51,11 @@ func Evaluate(e Elevator, o Order) int {
 	} else {
 		if (o.Floor < e.CurrentFloor) {
 			for i := o.Floor; i < e.CurrentFloor; i++ {
-				value += 2*e.Stops[i]
+				value += e.Stops[i] * STOP_WEIGHT
 			}
 		} else {
 			for i := 0; i < o.Floor; i++ {
-				value += 2*e.Stops[i]
+				value += e.Stops[i] * STOP_WEIGHT
 			}
 		}
 		if (e.Dir != o.Dir) {

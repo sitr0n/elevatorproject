@@ -4,9 +4,23 @@ import ("fmt"
 	"encoding/json"
 	"io/ioutil"
 )
-import order "../order"
 
-func Save(s <- chan bool, state *order.Elevator) {
+
+type MotorDirection int
+const (
+	MD_Up   MotorDirection = 1
+	MD_Down                = -1
+	MD_Stop                = 0
+)
+
+type Elevator struct {
+	Dir MotorDirection
+	CurrentFloor int
+	Stops [4]int
+}
+
+
+func Save(s <- chan bool, state *Elevator) {
 	for {
 		select {
 		case <- s :
@@ -21,7 +35,7 @@ func Save(s <- chan bool, state *order.Elevator) {
 	}
 }
 
-func Load(state *order.Elevator) {
+func Load(state *Elevator) {
 	fmt.Println("--------------------------")
 	fmt.Println("Loading state:")
 	fmt.Println("Previous state:\t", state.Stops)
@@ -36,7 +50,7 @@ func Load(state *order.Elevator) {
 	fmt.Println("--------------------------")
 }
 
-func LoadState_test(state *order.Elevator) {
+func LoadState_test(state *Elevator) {
 	var jsonBlob = []byte(`{"dir":1,"currentfloor":0,"stops":[1,1,1,1]}`)
 	
 	err := json.Unmarshal(jsonBlob, &state)

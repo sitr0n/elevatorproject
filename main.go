@@ -1,7 +1,7 @@
 package main
 
 import ("fmt"
-	"./order"
+	//"./order"
 	"./driver"
 	"./state"
 	"os/exec"
@@ -10,7 +10,7 @@ import ("fmt"
 
 
 func main() {
-	elevator := order.Elevator{}
+	elevator := state.Elevator{}
 	state.Load(&elevator)
 	
 	cmd := exec.Command("gnome-terminal", "-x", "sh", "-c", "ElevatorServer;")
