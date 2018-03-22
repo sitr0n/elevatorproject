@@ -31,8 +31,7 @@ func listen() {
                 
                 //receive <- message
 		//msg := <- receive
-		fmt.Println(message.Stops)
-		fmt.Println("Current floor: ", message.CurrentFloor)
+		fmt.Println("Found: ", message)
 		time.Sleep(2*time.Second)
                  
 	}
