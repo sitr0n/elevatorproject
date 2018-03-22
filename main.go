@@ -29,18 +29,18 @@ func main() {
 	ch_buttons := make(chan driver.ButtonEvent)
 	ch_obstr   := make(chan bool)
 	ch_stop    := make(chan bool)
-	ch_sChange := make(chan bool)
+	ch_newstate:= make(chan bool)
 	ch_exit	   := make(chan bool)
 
 	driver.Init("localhost:15657", 4)
-	go driver.Button_manager(ch_buttons, ch_sChange, &elevator)
-	go driver.Event_manager(ch_floors, ch_sChange, &elevator)
+	go driver.Button_manager(ch_buttons, ch_newstate, &elevator)
+	go driver.Event_manager(ch_floors, ch_newstate, &elevator)
 	go driver.PollButtons(ch_buttons)
 	go driver.PollFloorSensor(ch_floors)
 	go driver.PollObstructionSwitch(ch_obstr)
 	go driver.PollStopButton(ch_stop)
 	
-	go state.Save(ch_sChange, &elevator)
+	go state.Save(ch_newstate, &elevator)
 	
 	for {
 		bcast.Broadcast(&elevator)

@@ -10,7 +10,7 @@ import state "../state"
 
 func Broadcast(data *state.Elevator) {
        
-	ServerAddr,err := net.ResolveUDPAddr("udp","129.241.187.141:10001")
+	ServerAddr,err := net.ResolveUDPAddr("udp","129.241.187.57:10001")
   	state.Check(err)
  
   	LocalAddr, err := net.ResolveUDPAddr("udp", "129.241.187.56:0")
