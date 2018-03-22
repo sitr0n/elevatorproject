@@ -36,18 +36,13 @@ func Save(s <- chan bool, state *Elevator) {
 }
 
 func Load(state *Elevator) {
-	fmt.Println("--------------------------")
-	fmt.Println("Loading state:")
-	fmt.Println("Previous state:\t", state.Stops)
+	fmt.Println("\nLoading data...\n")
 	
 	jsonState, err := ioutil.ReadFile("state/state.json")
 	Check(err)
 	
 	err = json.Unmarshal(jsonState, &state)
 	Check(err)
-	
-	fmt.Println("New state:\t", state.Stops)
-	fmt.Println("--------------------------")
 }
 
 func LoadState_test(state *Elevator) {

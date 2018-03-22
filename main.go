@@ -6,20 +6,20 @@ import ("fmt"
 	"./state"
 	"os/exec"
 	"time"
+	"./bcast"
 )
 
 
 func main() {
-	elevator := state.Elevator{}
-	state.Load(&elevator)
-	
 	cmd := exec.Command("gnome-terminal", "-x", "sh", "-c", "ElevatorServer;")
 	err := cmd.Start()
 	state.Check(err)
 	
-	fmt.Println("Starting ElevatorServer...")
-	time.Sleep(1*time.Second)
+	time.Sleep(200*time.Millisecond)
+	var elevator = state.Elevator{}
+	state.Load(&elevator)
 	
+	fmt.Println("--------------------------")
 	fmt.Println("--------------------------")
 	fmt.Println("    STARTING ELEVATOR     ")
 	fmt.Println("--------------------------")
@@ -41,6 +41,11 @@ func main() {
 	go driver.PollStopButton(ch_stop)
 	
 	go state.Save(ch_sChange, &elevator)
+	
+	for {
+		bcast.Broadcast(&elevator)
+		time.Sleep(5*time.Second)
+	}
 	
 	<- ch_exit
 }

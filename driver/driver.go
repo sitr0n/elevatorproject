@@ -28,7 +28,7 @@ type ButtonEvent struct {
 	Button ButtonType
 }
 
-func Button_manager(b <- chan ButtonEvent, reciever chan <- bool, e *m.Elevator) {
+func Button_manager(b <- chan ButtonEvent, save chan <- bool, e *m.Elevator) {
 	for {
 		select {
 		case event := <- b:
@@ -48,12 +48,12 @@ func Button_manager(b <- chan ButtonEvent, reciever chan <- bool, e *m.Elevator)
 				//TODO: Evaluate all elevators and decide which one taking the order
 				//TODO: Update corresponding elevator struct -> Stops[event.Floor]
 			}
-			reciever <- true
+			save <- true
 		}
 	}
 }
 
-func Event_manager(f <- chan int, reciever chan <- bool, ep *m.Elevator) {
+func Event_manager(f <- chan int, save chan <- bool, ep *m.Elevator) {
 	prev_floor := -1
 	for {
 		select {
@@ -61,7 +61,7 @@ func Event_manager(f <- chan int, reciever chan <- bool, ep *m.Elevator) {
 			if (floor != prev_floor) {
 				SetFloorIndicator(floor)
 				ep.CurrentFloor = floor
-				fmt.Println("Reached floor: ", ep.CurrentFloor)
+				fmt.Println("Current floor: ", ep.CurrentFloor)
 				if (ep.Stops[floor] > 0) {
 					fmt.Println("Stopping at floor ", floor)
 					SetMotorDirection(m.MD_Stop)
@@ -74,7 +74,7 @@ func Event_manager(f <- chan int, reciever chan <- bool, ep *m.Elevator) {
 				motor_direction := Find_next_stop(ep)
 				SetMotorDirection(motor_direction)
 			}
-			reciever <- true
+			save <- true
 			prev_floor = floor
 		}
 	}
