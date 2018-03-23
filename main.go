@@ -6,7 +6,8 @@ import ("fmt"
 	"./state"
 	"os/exec"
 	"time"
-	"./bcast"
+	//"./bcast"
+	"./network"
 )
 
 
@@ -15,7 +16,7 @@ func main() {
 	err := cmd.Start()
 	state.Check(err)
 	
-	time.Sleep(200*time.Millisecond)
+	time.Sleep(500*time.Millisecond)
 	var elevator = state.Elevator{}
 	state.Load(&elevator)
 	
@@ -42,8 +43,10 @@ func main() {
 	
 	go state.Save(ch_newstate, &elevator)
 	
+	go network.Listener()
+	
 	for {
-		bcast.Broadcast(&elevator)
+		state.Broadcast(&elevator)
 		time.Sleep(5*time.Second)
 	}
 	
