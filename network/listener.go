@@ -8,7 +8,7 @@ import ("bytes"
 	"../state"
 )
 var alive bool = false
-const stasjon22 string = "129.241.187.56:0"
+const stasjon22 string = "129.241.187.56:10001"
 const stasjon23 string = "129.241.187.57:10001"
 
 const localIP string =	stasjon22
@@ -31,7 +31,6 @@ func Listener() {
         for {
 		
                 inputBytes := make([]byte, 4096)
-		fmt.Println("Waiting for data...")
                 length, _, _ := connection.ReadFromUDP(inputBytes)
                 buffer := bytes.NewBuffer(inputBytes[:length])
                 decoder := gob.NewDecoder(buffer)
@@ -45,18 +44,20 @@ func Listener() {
 		} else {
 			ch_wd_reset <- true
 		}
-		fmt.Println("Found: ", message)
+		fmt.Println("Received: ", message)
+		buffer.Reset()
 	}
 }
 
 func watchdog(reset <- chan bool, timeout chan <- bool, is_responsive *bool) {
+	fmt.Println("Watchdog activated!\n")
 	for i := 0; i < 10; i++ {
 		select {
 			case <- reset:
 				i = 0
 			default:
 		}
-		time.Sleep(500*time.Millisecond)
+		time.Sleep(1000*time.Millisecond)
 	}
 	fmt.Println("Connection lost.")
 	timeout <- true
