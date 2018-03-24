@@ -7,7 +7,8 @@ import ("bytes"
 	"time"
 	"../state"
 )
-var alive bool = false
+
+var _alive bool = false
 const stasjon22 string = "129.241.187.56:10001"
 const stasjon23 string = "129.241.187.57:10001"
 
@@ -36,20 +37,19 @@ func Listener() {
                 decoder := gob.NewDecoder(buffer)
                 decoder.Decode(&message)
                 
-		
-		if (!alive) {
+		ch_wd_reset <- true
+		if (get_alive() == false) {
 			fmt.Println("A new elevator has joined!")
-			alive = true
-			go watchdog(ch_wd_reset, ch_wd_timeout, &alive)
-		} else {
-			ch_wd_reset <- true
+			set_alive(true)
+			go watchdog(ch_wd_reset, ch_wd_timeout)
 		}
+		
 		fmt.Println("Received: ", message)
 		buffer.Reset()
 	}
 }
 
-func watchdog(reset <- chan bool, timeout chan <- bool, is_responsive *bool) {
+func watchdog(reset <- chan bool, timeout chan <- bool) {
 	fmt.Println("Watchdog activated!\n")
 	for i := 0; i < 10; i++ {
 		select {
@@ -61,5 +61,13 @@ func watchdog(reset <- chan bool, timeout chan <- bool, is_responsive *bool) {
 	}
 	fmt.Println("Connection lost.")
 	timeout <- true
-	*is_responsive = false
+	set_alive(false)
+}
+
+func set_alive (b bool) {
+	_alive = b
+}
+
+func get_alive () bool {
+	return _alive
 }
