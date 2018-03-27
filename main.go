@@ -17,6 +17,7 @@ func main() {
 	state.Check(err)
 	
 	time.Sleep(500*time.Millisecond)
+	
 	var elevator = state.Elevator{}
 	state.Load(&elevator)
 	

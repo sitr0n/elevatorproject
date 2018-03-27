@@ -1,4 +1,4 @@
-package order
+package driver
 
 import state "../state"
 
@@ -12,14 +12,32 @@ type Order struct {
 }
 
 
-func Order_complete(e state.Elevator) {
+func Order_complete(e *state.Elevator) {
 	e.Stops[e.CurrentFloor] = 0
 	//fmt.Println(e.Stops)
 }
 
-func Order_accept(e state.Elevator, o Order) {
+func Order_accept(e *state.Elevator, o Order) {
 	e.Stops[o.Floor] = 1
 	//fmt.Println(e.Stops)
+}
+
+func Button_event_to_order(be ButtonEvent) Order {
+	var order = Order{}
+	order.Floor = be.Floor
+	switch be.Button {
+		case BT_Cab:
+			order.Dir = 0
+			return order
+		case BT_HallUp:
+			order.Dir = state.MD_Up
+			return order
+		case BT_HallDown:
+			order.Dir = state.MD_Down
+			return order
+		default:
+			return order
+	}
 }
 
 func Evaluate(e state.Elevator, o Order) int {

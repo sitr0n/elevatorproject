@@ -11,10 +11,11 @@ func Button_manager(b <- chan ButtonEvent, save chan <- bool, e *m.Elevator) {
 		select {
 		case event := <- b:
 			if (event.Button == BT_Cab) {
-				e.Stops[event.Floor] = 1
+				var order = Button_event_to_order(event)
+				Order_accept(e, order)
+				
 				fmt.Println("-------------------------------")
 				fmt.Println("Button - Order floor: ", event.Floor)
-				fmt.Println("Button - Current floor: ", e.CurrentFloor)
 				fmt.Println("Button - Elevator stops: ", e.Stops)
 				fmt.Println("Button - Current motor direction: ", e.Dir)
 				if (e.Dir == m.MD_Stop) {
