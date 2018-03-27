@@ -4,6 +4,7 @@ import ("bytes"
 	"encoding/gob"
 	"fmt"
 	"net"
+	"time"
 )
 
 //import state "../state"
@@ -14,8 +15,7 @@ const stasjon23 string = "129.241.187.57:10001"
 const localIP string =	stasjon22
 const targetIP string = stasjon23
 
-func Broadcast(data *Elevator) {
-
+func Broadcast(data *Elevator) bool {
 	ServerAddr,err := net.ResolveUDPAddr("udp", targetIP)
 	Check(err)
 

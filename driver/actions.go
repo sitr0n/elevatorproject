@@ -3,22 +3,22 @@ package driver
 import ("fmt"
 	"time"
 )
-import m "../state"
+import state "../state"
 
 
-func Button_manager(b <- chan ButtonEvent, save chan <- bool, e *m.Elevator) {
+func Button_manager(b <- chan ButtonEvent, save chan <- bool, e *state.Elevator) {
 	for {
 		select {
 		case event := <- b:
 			if (event.Button == BT_Cab) {
-				var order = Button_event_to_order(event)
+				order := Button_event_to_order(event)
 				Order_accept(e, order)
 				
 				fmt.Println("-------------------------------")
 				fmt.Println("Button - Order floor: ", event.Floor)
 				fmt.Println("Button - Elevator stops: ", e.Stops)
 				fmt.Println("Button - Current motor direction: ", e.Dir)
-				if (e.Dir == m.MD_Stop) {
+				if (e.Dir == state.MD_Stop) {
 					motor_direction := Find_next_stop(e)
 					SetMotorDirection(motor_direction)
 				}
@@ -32,7 +32,7 @@ func Button_manager(b <- chan ButtonEvent, save chan <- bool, e *m.Elevator) {
 	}
 }
 
-func Event_manager(f <- chan int, save chan <- bool, ep *m.Elevator) {
+func Event_manager(f <- chan int, save chan <- bool, ep *state.Elevator) {
 	prev_floor := -1
 	for {
 		select {
@@ -43,7 +43,7 @@ func Event_manager(f <- chan int, save chan <- bool, ep *m.Elevator) {
 				fmt.Println("Current floor: ", ep.CurrentFloor)
 				if (ep.Stops[floor] > 0) {
 					fmt.Println("Stopping at floor ", floor)
-					SetMotorDirection(m.MD_Stop)
+					SetMotorDirection(state.MD_Stop)
 					SetDoorOpenLamp(true)
 					ep.Stops[floor] = 0
 					// fmt.Println("Elevator stops: ", ep.Stops)
@@ -59,20 +59,20 @@ func Event_manager(f <- chan int, save chan <- bool, ep *m.Elevator) {
 	}
 }
 
-func Find_next_stop(e *m.Elevator) m.MotorDirection {
-	var direction m.MotorDirection = m.MD_Stop
-	if (e.Dir == m.MD_Up) {
+func Find_next_stop(e *state.Elevator) state.MotorDirection {
+	var direction state.MotorDirection = state.MD_Stop
+	if (e.Dir == state.MD_Up) {
 		for i := e.CurrentFloor; i < 4; i++ {
 			// fmt.Println("Percieved elevator stops: ", e.Stops)
 			if (e.Stops[i] > 0) {
-				direction = m.MD_Up
+				direction = state.MD_Up
 				fmt.Println("continuing up")
 				return direction
 			}
 		}
 		for i := e.CurrentFloor; i >= 0; i-- {
 			if (e.Stops[i] > 0) {
-				direction = m.MD_Down
+				direction = state.MD_Down
 				fmt.Println("turning down")
 				e.Dir = direction
 				return direction
@@ -81,14 +81,14 @@ func Find_next_stop(e *m.Elevator) m.MotorDirection {
 	} else {
 		for i := e.CurrentFloor; i >= 0; i-- {
 			if (e.Stops[i] > 0) {
-				direction = m.MD_Down
+				direction = state.MD_Down
 				fmt.Println("continuing down")
 				return direction
 			}
 		}
 		for i := e.CurrentFloor; i < 4; i++ {
 			if (e.Stops[i] > 0) {
-				direction = m.MD_Up
+				direction = state.MD_Up
 				fmt.Println("turning up")
 				e.Dir = direction
 				return direction
@@ -96,6 +96,6 @@ func Find_next_stop(e *m.Elevator) m.MotorDirection {
 		}
 	}
 	fmt.Println("No pending orders. Stopping")
-	e.Dir = m.MD_Stop
+	e.Dir = state.MD_Stop
 	return direction
 }

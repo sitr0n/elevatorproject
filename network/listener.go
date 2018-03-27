@@ -49,6 +49,7 @@ func Listener() {
 	}
 }
 
+
 func watchdog(reset <- chan bool, timeout chan <- bool) {
 	fmt.Println("Watchdog activated!\n")
 	for i := 0; i < 10; i++ {
