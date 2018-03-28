@@ -19,8 +19,7 @@ func Button_manager(b <- chan ButtonEvent, save chan <- bool, e *state.Elevator)
 				fmt.Println("Button - Elevator stops: ", e.Stops)
 				fmt.Println("Button - Current motor direction: ", e.Dir)
 				if (e.Dir == state.MD_Stop) {
-					motor_direction := Find_next_stop(e)
-					SetMotorDirection(motor_direction)
+					move_to_next_floor(e)
 				}
 			} else {
 				//TODO: Broadcast corresponding order
@@ -50,8 +49,7 @@ func Event_manager(f <- chan int, save chan <- bool, ep *state.Elevator) {
 					time.Sleep(5*time.Second)
 					SetDoorOpenLamp(false)
 				}
-				motor_direction := Find_next_stop(ep)
-				SetMotorDirection(motor_direction)
+				move_to_next_floor(ep)
 			}
 			save <- true
 			prev_floor = floor
@@ -98,4 +96,9 @@ func Find_next_stop(e *state.Elevator) state.MotorDirection {
 	fmt.Println("No pending orders. Stopping")
 	e.Dir = state.MD_Stop
 	return direction
+}
+
+func move_to_next_floor(elevator *state.Elevator) {
+	motor_direction := Find_next_stop(elevator)
+	SetMotorDirection(motor_direction)
 }
