@@ -32,6 +32,8 @@ func main() {
 	ch_obstr   := make(chan bool)
 	ch_stop    := make(chan bool)
 	ch_newstate:= make(chan bool)
+	ch_bcast   := make(chan state.Elevator)
+	ch_listen  := make(chan bool)
 	ch_exit	   := make(chan bool)
 
 	driver.Init("localhost:15657", 4)
@@ -44,10 +46,10 @@ func main() {
 	
 	go state.Save(ch_newstate, &elevator)
 	
-	go network.Listener()
-	
+	go network.Communication_handler(ch_bcast, ch_listen)
+	ch_listen <- true
 	for {
-		state.Broadcast(&elevator)
+		ch_bcast <- elevator
 		time.Sleep(5*time.Second)
 	}
 	

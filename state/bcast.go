@@ -9,11 +9,13 @@ import ("bytes"
 
 //import state "../state"
 
+const stasjon17 string = "129.241.187.145:10001"
+const stasjon20 string = "129.241.187.155:0"
 const stasjon22 string = "129.241.187.56:0"
 const stasjon23 string = "129.241.187.57:10001"
 
-const localIP string =	stasjon22
-const targetIP string = stasjon23
+const localIP string =	stasjon20
+const targetIP string = stasjon17
 
 func Broadcast(data *Elevator) {
 	ServerAddr,err := net.ResolveUDPAddr("udp", targetIP)
