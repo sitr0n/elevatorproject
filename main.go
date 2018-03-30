@@ -12,10 +12,9 @@ import ("fmt"
 
 
 func main() {
-	cmd := exec.Command("gnome-terminal", "-x", "sh", "-c", "ElevatorServer;")
-	err := cmd.Start()
+	ElevatorServer := exec.Command("gnome-terminal", "-x", "sh", "-c", "ElevatorServer;")
+	err := ElevatorServer.Start()
 	state.Check(err)
-	
 	time.Sleep(500*time.Millisecond)
 	
 	var elevator = state.Elevator{}
@@ -47,9 +46,10 @@ func main() {
 	go state.Save(ch_newstate, &elevator)
 	
 	go network.Communication_handler(ch_bcast, ch_listen)
-	ch_listen <- true
+	//ch_listen <- true
 	for {
-		ch_bcast <- elevator
+		ch_listen <- true
+		//ch_bcast <- elevator
 		time.Sleep(5*time.Second)
 	}
 	
