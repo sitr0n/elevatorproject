@@ -10,6 +10,8 @@ import ("bytes"
 
 var _alive bool = false
 
+const stasjon13 string = "129.241.187.152:10001"
+const stasjon14 string = "129.241.187.142:10001"
 const stasjon17 string = "129.241.187.145:10001"
 const stasjon20 string = "129.241.187.155:10001"
 const stasjon22 string = "129.241.187.56:10001"
@@ -38,20 +40,26 @@ func Communication_handler(bcast <- chan state.Elevator, listen <- chan bool) {
 	state.Check(err)
 	defer out_connection.Close()
 
-	wd_reset := make(chan bool) 
+	go Poll_remote_state(in_connection)
 	for {
 		select {
 		case data := <- bcast:
 			broadcast_state(data, out_connection)
-
-		case <- listen:
-			if (is_alive() == false) {
-				go watchdog(wd_reset)
-			}
-			wd_reset <- true
-			msg := receive_state(in_connection)
-			fmt.Println("Received: ", msg)
+			
 		}
+
+	}
+}
+
+func Poll_remote_state(connection *net.UDPConn) {
+	wd_reset := make(chan bool)
+	for {
+		if (is_alive() == false) {
+			go watchdog(wd_reset)
+		}
+		wd_reset <- true
+		remote_state := receive_state(connection)
+		fmt.Println("Received: ", remote_state)
 	}
 }
 
