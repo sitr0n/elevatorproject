@@ -17,13 +17,13 @@ const stasjon20 string = "129.241.187.155:10001"
 const stasjon22 string = "129.241.187.56:10001"
 const stasjon23 string = "129.241.187.57:10001"
 
-const targetIP string = stasjon17
+const targetIP string = stasjon14
 
 //TODO: make remote button event listener
 
 
-func Communication_handler(bcast <- chan state.Elevator, listen <- chan bool) {
-	localip := find_localip()
+func Communication_handler(bcast <- chan state.Elevator, remote_state *state.Elevator) {
+	localip := get_localip()
 
 	listen_addr, err := net.ResolveUDPAddr("udp", localip + ":10001")
 	state.Check(err)
@@ -40,30 +40,33 @@ func Communication_handler(bcast <- chan state.Elevator, listen <- chan bool) {
 	state.Check(err)
 	defer out_connection.Close()
 
-	go Poll_remote_state(in_connection)
+	go poll_remote_state(in_connection, remote_state)
+	
 	for {
 		select {
 		case data := <- bcast:
-			broadcast_state(data, out_connection)
+			send_state(data, out_connection)
 			
 		}
 
 	}
 }
 
-func Poll_remote_state(connection *net.UDPConn) {
+func poll_remote_state(connection *net.UDPConn, output *state.Elevator) {
 	wd_reset := make(chan bool)
+	//var remote_state state.Elevator
 	for {
 		if (is_alive() == false) {
 			go watchdog(wd_reset)
 		}
 		wd_reset <- true
-		remote_state := receive_state(connection)
-		fmt.Println("Received: ", remote_state)
+		output := read_state(connection)
+		//output = remote_state
+		fmt.Println("Received: ", output)
 	}
 }
 
-func broadcast_state(state state.Elevator, connection *net.UDPConn) {
+func send_state(state state.Elevator, connection *net.UDPConn) {
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
 	encoder.Encode(state)
@@ -72,7 +75,7 @@ func broadcast_state(state state.Elevator, connection *net.UDPConn) {
 	buffer.Reset()
 }
 
-func receive_state(connection *net.UDPConn) state.Elevator {
+func read_state(connection *net.UDPConn) state.Elevator {
 	var message state.Elevator
 	inputBytes := make([]byte, 4096)
 	fmt.Println("Starts listening....")
@@ -101,7 +104,7 @@ func watchdog(reset <- chan bool) {
 	fmt.Println("Connection lost.")
 }
 
-func find_localip() string {
+func get_localip() string {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	state.Check(err)
 	defer conn.Close()

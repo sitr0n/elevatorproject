@@ -18,6 +18,7 @@ func main() {
 	time.Sleep(500*time.Millisecond)
 	
 	var elevator = state.Elevator{}
+	var elevator2 = state.Elevator{}
 	state.Load(&elevator)
 	
 	fmt.Println("--------------------------")
@@ -32,7 +33,7 @@ func main() {
 	ch_stop    := make(chan bool)
 	ch_newstate:= make(chan bool)
 	ch_bcast   := make(chan state.Elevator)
-	ch_listen  := make(chan bool)
+	//ch_listen  := make(chan bool)
 	ch_exit	   := make(chan bool)
 
 	driver.Init("localhost:15657", 4)
@@ -45,11 +46,11 @@ func main() {
 	
 	go state.Save(ch_newstate, &elevator)
 	
-	go network.Communication_handler(ch_bcast, ch_listen)
+	go network.Communication_handler(ch_bcast, &elevator2)
 	//ch_listen <- true
 	for {
-		ch_listen <- true
-		//ch_bcast <- elevator
+		ch_bcast <- elevator
+		fmt.Println("Remote currently: " + elevator2)
 		time.Sleep(5*time.Second)
 	}
 	
