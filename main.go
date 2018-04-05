@@ -46,11 +46,12 @@ func main() {
 	
 	go state.Save(ch_newstate, &elevator)
 	
-	go network.Communication_handler(ch_bcast, &elevator2)
+	go network.Broadcast_state(ch_bcast)
+	go network.Poll_remote_state(&elevator2)
 	//ch_listen <- true
 	for {
 		ch_bcast <- elevator
-		fmt.Println("Remote currently: " + elevator2)
+		fmt.Println("Remote currently: ", elevator2)
 		time.Sleep(5*time.Second)
 	}
 	

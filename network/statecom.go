@@ -22,15 +22,8 @@ const targetIP string = stasjon14
 //TODO: make remote button event listener
 
 
-func Communication_handler(bcast <- chan state.Elevator, remote_state *state.Elevator) {
+func Broadcast_state(bcast <- chan state.Elevator) {
 	localip := get_localip()
-
-	listen_addr, err := net.ResolveUDPAddr("udp", localip + ":10001")
-	state.Check(err)
-	in_connection, _ := net.ListenUDP("udp", listen_addr)
-	state.Check(err)
-	defer in_connection.Close()
-
 
 	local_addr, err := net.ResolveUDPAddr("udp", localip + ":0")
 	state.Check(err)
@@ -39,31 +32,49 @@ func Communication_handler(bcast <- chan state.Elevator, remote_state *state.Ele
 	out_connection, err := net.DialUDP("udp", local_addr, target_addr)
 	state.Check(err)
 	defer out_connection.Close()
-
-	go poll_remote_state(in_connection, remote_state)
 	
 	for {
 		select {
 		case data := <- bcast:
 			send_state(data, out_connection)
-			
+			//send_state(data, second_out_connection)
 		}
-
 	}
 }
 
-func poll_remote_state(connection *net.UDPConn, output *state.Elevator) {
+func Poll_remote_state(output *state.Elevator) {
+	localip := get_localip()
+
+	listen_addr, err := net.ResolveUDPAddr("udp", localip + ":10001")
+	state.Check(err)
+	input, _ := net.ListenUDP("udp", listen_addr)
+	state.Check(err)
+	defer input.Close()
+	
 	wd_reset := make(chan bool)
-	//var remote_state state.Elevator
+
 	for {
 		if (is_alive() == false) {
 			go watchdog(wd_reset)
+			fmt.Println("Connection established!")
 		}
 		wd_reset <- true
-		output := read_state(connection)
-		//output = remote_state
-		fmt.Println("Received: ", output)
+		
+		*output = read_state(input)
+		fmt.Println("Received: ", *output)
 	}
+}
+
+func Ack_listener(responding chan <- bool) {
+	localip := get_localip()
+
+	listen_addr, err := net.ResolveUDPAddr("udp", localip + ":10002")
+	state.Check(err)
+	input, _ := net.ListenUDP("udp", listen_addr)
+	state.Check(err)
+	defer input.Close()
+	
+	//TODO: listen for ack, decide how to implement watchdog / timeout
 }
 
 func send_state(state state.Elevator, connection *net.UDPConn) {
@@ -78,18 +89,18 @@ func send_state(state state.Elevator, connection *net.UDPConn) {
 func read_state(connection *net.UDPConn) state.Elevator {
 	var message state.Elevator
 	inputBytes := make([]byte, 4096)
-	fmt.Println("Starts listening....")
+	//fmt.Println("Starts listening....")
 	length, _, _ := connection.ReadFromUDP(inputBytes)
 	buffer := bytes.NewBuffer(inputBytes[:length])
 	decoder := gob.NewDecoder(buffer)
 	decoder.Decode(&message)
 	buffer.Reset()
-
+	
 	return message
 }
 
 func watchdog(reset <- chan bool) {
-	fmt.Println("Watchdog activated!\n")
+	//fmt.Println("Watchdog activated!\n")
 	set_alive(true)
 	for i := 0; i < 10; i++ {
 		select {
