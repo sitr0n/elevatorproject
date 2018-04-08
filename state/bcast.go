@@ -13,9 +13,11 @@ const stasjon17 string = "129.241.187.145:10001"
 const stasjon20 string = "129.241.187.155:0"
 const stasjon22 string = "129.241.187.56:0"
 const stasjon23 string = "129.241.187.57:10001"
+const stasjon10 string = "129.241.187.158:10001"
+const stasjon11 string = "129.241.187.159:10001"
 
-const localIP string =	stasjon20
-const targetIP string = stasjon17
+const localIP string =	stasjon10
+const targetIP string = stasjon11
 
 func Broadcast(data *Elevator) {
 	ServerAddr,err := net.ResolveUDPAddr("udp", targetIP)

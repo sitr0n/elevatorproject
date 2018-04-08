@@ -57,3 +57,9 @@ func Check(e error) {
 		panic(e)
 	}
 }
+
+func Check_conn(e error) {
+	if e != nil {
+		fmt.Println("Connection error")
+	}
+}

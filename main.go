@@ -35,6 +35,8 @@ func main() {
 	ch_bcast   := make(chan state.Elevator)
 	//ch_listen  := make(chan bool)
 	ch_exit	   := make(chan bool)
+	ack_wd1_reset   := make(chan bool)
+	ack_wd2_reset  := make(chan bool)
 
 	driver.Init("localhost:15657", 4)
 	go driver.Button_manager(ch_buttons, ch_newstate, &elevator)
@@ -48,6 +50,9 @@ func main() {
 	
 	go network.Broadcast_state(ch_bcast)
 	go network.Poll_remote_state(&elevator2)
+	go network.Ack_listener1(ack_wd1_reset)
+	go network.Ack_listener2(ack_wd2_reset)
+	go network.Ack_broadcast()
 	//ch_listen <- true
 	for {
 		ch_bcast <- elevator

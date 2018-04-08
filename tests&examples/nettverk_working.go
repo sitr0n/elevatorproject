@@ -23,7 +23,7 @@ func CheckError(err error) {
 
 func listen(receive chan Packet) {
 
-        ServerAddr,err := net.ResolveUDPAddr("udp","129.241.187.143:10001")
+        ServerAddr,err := net.ResolveUDPAddr("udp","129.241.187.158:10001")
     	CheckError(err)
 
         connection, err := net.ListenUDP("udp", ServerAddr)
@@ -57,10 +57,10 @@ func broadcast(send chan Packet) {
 	ServerAddr,err := net.ResolveUDPAddr("udp","129.241.187.146:10001")
   	CheckError(err)
 
-	ServerAddr2,err := net.ResolveUDPAddr("udp","129.241.187.141:10001")
+	ServerAddr2,err := net.ResolveUDPAddr("udp","129.241.187.159:10001")
   	CheckError(err)
  
-  	LocalAddr, err := net.ResolveUDPAddr("udp", "129.241.187.143:0")
+  	LocalAddr, err := net.ResolveUDPAddr("udp", "129.241.187.158:0")
  	CheckError(err)
  
 	connection, err := net.DialUDP("udp", LocalAddr, ServerAddr)
@@ -74,7 +74,7 @@ func broadcast(send chan Packet) {
         
         
 	
-	p := Packet{ID: 222, Response: "PC 143 reporting in"}
+	p := Packet{ID: 111, Response: "PC 158 reporting in"}
 	
         for {
 
