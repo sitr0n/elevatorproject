@@ -99,13 +99,13 @@ func watchdog(wd_reset <- chan bool) {
 	//fmt.Println("Watchdog activated!\n")
 	set_alive(true)
 	for i := 0; i < 10; i++ {
+		time.Sleep(500*time.Millisecond)
 		select {
 		case <- wd_reset:
 			i = 0
 
 		default:
 		}
-		time.Sleep(500*time.Millisecond)
 	}
 	set_alive(false)
 	fmt.Println("Connection lost.")
