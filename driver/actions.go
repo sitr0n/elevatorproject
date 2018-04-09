@@ -5,6 +5,18 @@ import ("fmt"
 )
 import state "../state"
 
+func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
+	for i := 0; i < 10; i++ {
+		time.Sleep(500*time.Millisecond)
+		select {
+		case <- cancel:
+			return
+
+		default:
+		}
+	}
+	timeout <- true
+}
 
 func Button_manager(b <- chan ButtonEvent, save chan <- bool, e *state.Elevator) {
 	for {
@@ -26,7 +38,34 @@ func Button_manager(b <- chan ButtonEvent, save chan <- bool, e *state.Elevator)
 			        network.broadcast_state()
 			        //poll states
 			        //time.Sleep(100*Millisecond)
-			        Evaluate_all()
+				
+				cost_local := driver.Evaluate(e)
+				cost_e2 := driver.Evaluate(e2)
+				cost_e3 := driver.Evaluate(e3)
+			        Choose_elevator()
+				
+				if (network.is_Alive)
+					wd_timeout := make(chan bool)
+					wd_cancel := make(chan bool)
+					ack_1 := make(chan bool)
+					ack_2 := make(chan bool)
+					
+					Activate_timeout(ch_cancel, ch_timeout)
+					network.Ack_listener1(ack1)
+					netowrk.Ack_listener2(ack2)
+					select {
+					case <- ack_1:
+						wd_cancel <- true
+						break
+					case <- ack_2:
+						wd_cancel <- true
+						break
+					case <- wd_timeout
+						Order_accept(e, order)
+					}
+				else {
+					Order_accept(e, order)
+				}
 				//TODO: Broadcast corresponding order
 				//TODO: Evaluate all elevators and decide which one taking the order
 				//TODO: Update corresponding elevator struct -> Stops[event.Floor]

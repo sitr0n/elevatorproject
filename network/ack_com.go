@@ -14,7 +14,7 @@ const ackIP1 string = ack_stasjon10
 const ackIP2 string = ack_stasjon11
 
 
-func Ack_listener1(ack_wd1_reset chan<- bool) { 
+func Ack_listener1(ack_wd1_reset chan<- bool) {
 	localip := get_localip()
 
 	listen_addr, err := net.ResolveUDPAddr("udp", localip + ":10002")

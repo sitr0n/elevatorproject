@@ -21,10 +21,12 @@ const stasjon10 string = "129.241.187.158:10001"
 const stasjon11 string = "129.241.187.159:10001"
 
 const targetIP string = stasjon11
-
+const (
+	REMOTE_1   int	= 1
+	REMOTE_2	= 2
+)
 
 //TODO: make remote button event listener
-
 
 func Broadcast_state(bcast <- chan state.Elevator) {
 	localip := get_localip()
