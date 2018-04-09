@@ -9,7 +9,8 @@ import (//"bytes"
 	"log"
 )
 
-var _alive bool = false
+var remote_elev1_alive bool = false
+var remote_elev2_alive bool = false
 
 const stasjon13 string = "129.241.187.152:10001"
 const stasjon14 string = "129.241.187.142:10001"
@@ -20,11 +21,18 @@ const stasjon23 string = "129.241.187.57:10001"
 const stasjon10 string = "129.241.187.158:10001"
 const stasjon11 string = "129.241.187.159:10001"
 
+<<<<<<< HEAD
 const targetIP string = stasjon11
 const (
 	REMOTE_1   int	= 1
 	REMOTE_2	= 2
 )
+=======
+//const targetIP string = stasjon11
+const remote_elev_IP1 = stasjon 10
+const remote_elev_IP2 = stasjon 11
+
+>>>>>>> b0380670556de929c827778acd889d43286f54f1
 
 //TODO: make remote button event listener
 
@@ -33,17 +41,22 @@ func Broadcast_state(bcast <- chan state.Elevator) {
 
 	local_addr, err := net.ResolveUDPAddr("udp", localip + ":0")
 	state.Check(err)
-	target_addr,err := net.ResolveUDPAddr("udp", targetIP)
+	target_addr,err := net.ResolveUDPAddr("udp", remote_elev_IP1)
+	state.Check(err)
+	target_addr2,err := net.ResolveUDPAddr("udp", remote_elev_IP2)
 	state.Check(err)
 	out_connection, err := net.DialUDP("udp", local_addr, target_addr)
 	state.Check(err)
+	out_connection2, err := net.DialUDP("udp", local_addr, target_addr)
+	state.Check(err)
 	defer out_connection.Close()
+	defer out_connection2.Close()
 	
 	for {
 		select {
 		case data := <- bcast:
 			send_state(data, out_connection)
-			//send_state(data, second_out_connection)
+			send_state(data, out_connection2)
 		}
 	}
 }
