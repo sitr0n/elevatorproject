@@ -21,18 +21,17 @@ const stasjon23 string = "129.241.187.57:10001"
 const stasjon10 string = "129.241.187.158:10001"
 const stasjon11 string = "129.241.187.159:10001"
 
-<<<<<<< HEAD
+
 const targetIP string = stasjon11
 const (
 	REMOTE_1   int	= 1
 	REMOTE_2	= 2
 )
-=======
+
 //const targetIP string = stasjon11
 const remote_elev_IP1 = stasjon 10
 const remote_elev_IP2 = stasjon 11
 
->>>>>>> b0380670556de929c827778acd889d43286f54f1
 
 //TODO: make remote button event listener
 
