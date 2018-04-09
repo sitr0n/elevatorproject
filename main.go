@@ -19,6 +19,7 @@ func main() {
 	
 	var elevator = state.Elevator{}
 	var elevator2 = state.Elevator{}
+	var elevator3 = state.Elevator{}
 	state.Load(&elevator)
 	
 	fmt.Println("--------------------------")
@@ -38,6 +39,7 @@ func main() {
 	ack_wd1_reset   := make(chan bool)
 	ack_wd2_reset  := make(chan bool)
 
+
 	driver.Init("localhost:15657", 4)
 	go driver.Button_manager(ch_buttons, ch_newstate, &elevator)
 	go driver.Event_manager(ch_floors, ch_newstate, &elevator)
@@ -50,6 +52,7 @@ func main() {
 	
 	go network.Broadcast_state(ch_bcast)
 	go network.Poll_remote_state(&elevator2)
+	go network.Poll_remote_state2(&elevator3)
 	go network.Ack_listener1(ack_wd1_reset)
 	go network.Ack_listener2(ack_wd2_reset)
 	go network.Ack_broadcast()

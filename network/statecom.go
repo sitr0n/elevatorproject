@@ -69,6 +69,29 @@ func Poll_remote_state(output *state.Elevator) {
 	}
 }
 
+func Poll_remote_state2(output *state.Elevator) {
+	localip := get_localip()
+
+	listen_addr, err := net.ResolveUDPAddr("udp", localip + ":10002")
+	state.Check(err)
+	input, _ := net.ListenUDP("udp", listen_addr)
+	state.Check(err)
+	defer input.Close()
+	
+	wd_reset := make(chan bool)
+
+	for {
+		if (is_alive() == false) {
+			go watchdog(wd_reset)
+			fmt.Println("Connection established!")
+		}
+		wd_reset <- true
+		
+		*output = read_state(input)
+		fmt.Println("Received: ", *output)
+	}
+}
+
 
 func send_state(state state.Elevator, connection *net.UDPConn) {
 	jsonRequest, err := json.Marshal(state)
@@ -108,7 +131,7 @@ func watchdog(wd_reset <- chan bool) {
 		}
 	}
 	set_alive(false)
-	fmt.Println("Connection lost.")
+	fmt.Println("Connection lost with elevator 2.")
 }
 
 

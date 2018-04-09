@@ -21,11 +21,27 @@ func Button_manager(b <- chan ButtonEvent, save chan <- bool, e *state.Elevator)
 				if (e.Dir == state.MD_Stop) {
 					move_to_next_floor(e)
 				}
-			} else {
+			} else if (event.Button == BT_Hallup || BT_Halldown) { 
+			
+			        network.broadcast_state()
+			        //poll states
+			        //time.Sleep(100*Millisecond)
+			        Evaluate_all()
 				//TODO: Broadcast corresponding order
 				//TODO: Evaluate all elevators and decide which one taking the order
 				//TODO: Update corresponding elevator struct -> Stops[event.Floor]
-			}
+			} 
+			
+		case (stop-button):
+		        //TODO: stop elevator
+		        //TODO: broadcast to others that elevator has stopped and do not take orders
+		        //TODO: Create bool for stop-unstop
+		        //TODO: Elevator are set as lost until stop button is pressed again and elev is set alive
+		        
+		case obstruction: 
+		        //TODO: acknowledge is turned off, other elevators MUST take orders
+		        //TODO: Ack fails such that elevators are set as lost
+			
 			save <- true
 		}
 	}
