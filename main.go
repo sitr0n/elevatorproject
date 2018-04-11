@@ -12,6 +12,12 @@ import ("fmt"
 
 
 func main() {
+
+	fmt.Println("\nCompiled successfully!")
+	
+	network.Init(10, 11)
+	for {
+	}
 	ElevatorServer := exec.Command("gnome-terminal", "-x", "sh", "-c", "ElevatorServer;")
 	err := ElevatorServer.Start()
 	state.Check(err)
@@ -55,7 +61,7 @@ func main() {
 	go network.Poll_remote_state2(&elevator3)
 	go network.Ack_listener1(ack_wd1_reset)
 	go network.Ack_listener2(ack_wd2_reset)
-	go network.Ack_broadcast()
+	go network.Ack_broadcaster()
 	//ch_listen <- true
 	for {
 		ch_bcast <- elevator

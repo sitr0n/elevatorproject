@@ -9,8 +9,10 @@ import (//"bytes"
 	"log"
 )
 
-var remote_elev1_alive bool = false
-var remote_elev2_alive bool = false
+//var remote_elev1_alive bool = false
+//var remote_elev2_alive bool = false
+
+var _alive bool = false
 
 const stasjon13 string = "129.241.187.152:10001"
 const stasjon14 string = "129.241.187.142:10001"
@@ -23,14 +25,10 @@ const stasjon11 string = "129.241.187.159:10001"
 
 
 const targetIP string = stasjon11
-const (
-	REMOTE_1   int	= 1
-	REMOTE_2	= 2
-)
 
 //const targetIP string = stasjon11
-const remote_elev_IP1 = stasjon 10
-const remote_elev_IP2 = stasjon 11
+const remote_elev_IP1 = stasjon10
+const remote_elev_IP2 = stasjon11
 
 
 //TODO: make remote button event listener
@@ -46,7 +44,7 @@ func Broadcast_state(bcast <- chan state.Elevator) {
 	state.Check(err)
 	out_connection, err := net.DialUDP("udp", local_addr, target_addr)
 	state.Check(err)
-	out_connection2, err := net.DialUDP("udp", local_addr, target_addr)
+	out_connection2, err := net.DialUDP("udp", local_addr, target_addr2)
 	state.Check(err)
 	defer out_connection.Close()
 	defer out_connection2.Close()
