@@ -1,21 +1,22 @@
 package main
 
 import ("fmt"
-	//"./order"
-	"./driver"
 	"./state"
 	"os/exec"
 	"time"
-	//"./bcast"
 	"./network"
 )
+import driver "./driver"
 
 
 func main() {
 
 	fmt.Println("\nCompiled successfully!")
+	ch_order  := make(chan driver.Order)
+	ch_ack  := make(chan bool)
+	ch_bcast := make(chan interface{})
 	
-	network.Init(10, 11)
+	network.Init(10, 11, ch_bcast, ch_order, ch_ack)
 	for {
 	}
 	ElevatorServer := exec.Command("gnome-terminal", "-x", "sh", "-c", "ElevatorServer;")
@@ -25,7 +26,6 @@ func main() {
 	
 	var elevator = state.Elevator{}
 	var elevator2 = state.Elevator{}
-	var elevator3 = state.Elevator{}
 	state.Load(&elevator)
 	
 	fmt.Println("--------------------------")
@@ -39,11 +39,9 @@ func main() {
 	ch_obstr   := make(chan bool)
 	ch_stop    := make(chan bool)
 	ch_newstate:= make(chan bool)
-	ch_bcast   := make(chan state.Elevator)
-	//ch_listen  := make(chan bool)
+	//ch_bcast   := make(chan state.Elevator)
 	ch_exit	   := make(chan bool)
-	ack_wd1_reset   := make(chan bool)
-	ack_wd2_reset  := make(chan bool)
+
 
 
 	driver.Init("localhost:15657", 4)
@@ -55,13 +53,7 @@ func main() {
 	go driver.PollStopButton(ch_stop)
 	
 	go state.Save(ch_newstate, &elevator)
-	
-	go network.Broadcast_state(ch_bcast)
-	go network.Poll_remote_state(&elevator2)
-	go network.Poll_remote_state2(&elevator3)
-	go network.Ack_listener1(ack_wd1_reset)
-	go network.Ack_listener2(ack_wd2_reset)
-	go network.Ack_broadcaster()
+
 	//ch_listen <- true
 	for {
 		ch_bcast <- elevator

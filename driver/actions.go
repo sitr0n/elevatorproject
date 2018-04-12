@@ -4,6 +4,7 @@ import ("fmt"
 	"time"
 )
 import state "../state"
+//import network "../network"
 
 func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
 	for i := 0; i < 10; i++ {
@@ -22,8 +23,8 @@ func Button_manager(b <- chan ButtonEvent, save chan <- bool, e *state.Elevator)
 	for {
 		select {
 		case event := <- b:
+			order := Button_event_to_order(event)
 			if (event.Button == BT_Cab) {
-				order := Button_event_to_order(event)
 				Order_accept(e, order)
 				
 				fmt.Println("-------------------------------")
@@ -34,7 +35,16 @@ func Button_manager(b <- chan ButtonEvent, save chan <- bool, e *state.Elevator)
 					move_to_next_floor(e)
 				}
 			} else { 
+				//bcast <- order
+				//local_cost := Evaluate(*e, order)
+				//remote1 := network.Get_remote(0)
+				//remote2 := network.Get_remote(2)
+				
+				//cost1 := Evaluate(remote1.state, order)
+				//cost2 := Evaluate(remote2.state, order)
+				
 			
+				
 			        //network.broadcast_state()
 			        //poll states
 			        //time.Sleep(100*Millisecond)
