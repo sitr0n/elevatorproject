@@ -38,8 +38,8 @@ func Init(first_remote interface{}, second_remote interface{}, ch_bcast <- chan 
 	_remote[1].address = ip_address(second_remote)
 	_remote[1].alive = false
 	
-	connect_remote(&_remote[0])
-	connect_remote(&_remote[1])
+	connect_remote(&_remote[0], &_remote[1])
+
 	
 	//ch_list := make(chan interface{})
 	
@@ -124,25 +124,40 @@ func watchdog(index int, kick <- chan bool) {
 	_remote[index].alive = false
 }
 
-func connect_remote(r *remote) {
-	listen_addr, err := net.ResolveUDPAddr("udp", _localip + PORT)
+func connect_remote(r1 *remote, r2 *remote) {
+	listen_addr, err := net.ResolveUDPAddr("udp", _localip + PORT1)
+	state.Check(err)
+	listen_addr2, err := net.ResolveUDPAddr("udp", _localip + PORT2)
 	state.Check(err)
 	in_connection, _ := net.ListenUDP("udp", listen_addr)
 	state.Check(err)
+	in_connection2, _ := net.ListenUDP("udp", listen_addr2)
+	state.Check(err)
 	defer in_connection.Close()
+	defer in_connection2.Close()
 	
 	local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
 	state.Check(err)
-	target_addr,err := net.ResolveUDPAddr("udp", string(r.address) + PORT)
+	target_addr,err := net.ResolveUDPAddr("udp", string(r1.address) + PORT1)
 	state.Check(err)
 	out_connection, err := net.DialUDP("udp", local_addr, target_addr)
 	state.Check(err)
+	target_addr2,err := net.ResolveUDPAddr("udp", string(r2.address) + PORT2)
+	state.Check(err)
+	out_connection2, err := net.DialUDP("udp", local_addr, target_addr2)
+	state.Check(err)
 	defer out_connection.Close()
+	defer out_connection2.Close()
 	
-	r.input = in_connection
-	r.output = out_connection
-	fmt.Println("Device ", r.id , " connected!")
+	r1.input = in_connection
+	r2.input = in_connection2
+	r1.output = out_connection
+	r2.output = out_connection2
+	fmt.Println("Device ", r1.id , " connected to ", r1.address, PORT1)
+	fmt.Println("Device ", r2.id , " connected to", r2.address, PORT2)
 }
+
+
 
 func ip_address(adr interface{}) ip {
 	switch a := adr.(type) {
