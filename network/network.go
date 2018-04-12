@@ -138,6 +138,7 @@ func connect_remote(r *Remote) {
 	fmt.Println("Device ", r.id , " connected!")
 }
 
+
 func ip_address(adr interface{}) def.IP {
 	switch a := adr.(type) {
 	case def.IP:
