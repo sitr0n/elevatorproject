@@ -5,58 +5,52 @@ import (
 	"net"
 	"time"
 	"encoding/json"
-	"log"
 )
-import state "../state"
-import order "../driver"
+
 import unsafe "unsafe"
+import def "../def"
 
 
-type ip string
-type remote struct {
+type Remote struct {
 	id		int
 	input		*net.UDPConn
 	output 		*net.UDPConn
-	address  	ip
+	address  	def.IP
 	alive 		bool
-	state 		state.Elevator
+	send		chan interface{}
+	receive		chan interface{}
+	state 		def.Elevator
 }
 
-var _remote [2]remote
 var _localip string
 
-func Get_remote(index int) remote {
-	return _remote[index]
-}
-
-func Init(first_remote interface{}, second_remote interface{}, ch_bcast <- chan interface{}, ch_order chan <- order.Order, ch_ack chan <- bool) {
+func Init(first_remote interface{}, second_remote interface{}, r *[def.FLOORS]Remote, ch_order chan <- def.Order, ch_ack chan <- bool) {
 	_localip = get_localip()
-	_remote[0].id = 0
-	_remote[0].address = ip_address(first_remote)
-	_remote[0].alive = false
-	_remote[1].id = 1
-	_remote[1].address = ip_address(second_remote)
-	_remote[1].alive = false
+	r[0].id = 0
+	r[0].address = ip_address(first_remote)
+	r[0].alive = false
+	r[1].id = 1
+	r[1].address = ip_address(second_remote)
+	r[1].alive = false
 	
-	connect_remote(&_remote[0])
-	connect_remote(&_remote[1])
+	connect_remote(&r[0])
+	connect_remote(&r[1])
 	
-	//ch_list := make(chan interface{})
+	go remote_listener(&r[0], ch_order, ch_ack)
+	go remote_broadcaster(r[0].output, r[0].send)
 	
-	go remote_listener(&_remote[0], ch_order, ch_ack)
-	go remote_broadcaster(_remote[0].output, ch_bcast)
+	go remote_listener(&r[1], ch_order, ch_ack)
+	go remote_broadcaster(r[1].output, r[1].send)
 	
-	go remote_listener(&_remote[1], ch_order, ch_ack)
-	go remote_broadcaster(_remote[1].output, ch_bcast)
 }
 
 
 
-func remote_listener(r *remote, ch_order chan <- order.Order, ch_ack chan <- bool) {
-	var state state.Elevator
-	var order order.Order
+func remote_listener(r *Remote, ch_order chan <- def.Order, ch_ack chan <- bool) {
+	var elevator def.Elevator
+	var order def.Order
 	var ack bool = false
-	const STATE_SIZE = int(unsafe.Sizeof(state))
+	const STATE_SIZE = int(unsafe.Sizeof(elevator))
 	const ORDER_SIZE = int(unsafe.Sizeof(order))
 	const ACK_SIZE = int(unsafe.Sizeof(ack))
 	wd_kick := make(chan bool)
@@ -67,28 +61,28 @@ func remote_listener(r *remote, ch_order chan <- order.Order, ch_ack chan <- boo
 		length, _, _ := r.input.ReadFromUDP(inputBytes)
 		wd_kick <- true
 		if (r.alive == false) {
-			go watchdog(r.id, wd_kick)
+			go watchdog(r, wd_kick)
 			fmt.Println("Connection established!")
 		}
 		
 		switch length {
 		case ACK_SIZE:
 			err := json.Unmarshal(inputBytes[:length], &ack)
-			checker(err)
+			def.Check(err)
 			ch_ack <- ack
 			break
 			
 		case ORDER_SIZE: 
 			err := json.Unmarshal(inputBytes[:length], &order)
-			checker(err)
+			def.Check(err)
 			ch_order <- order
 			break
 			
 		case STATE_SIZE:
-			err := json.Unmarshal(inputBytes[:length], &state)
-			checker(err)
+			err := json.Unmarshal(inputBytes[:length], &elevator)
+			def.Check(err)
 			
-			r.state = state
+			r.state = elevator
 			//ch_state <- state
 			break
 		
@@ -104,15 +98,15 @@ func remote_broadcaster(connection *net.UDPConn, message <- chan interface{}) {
 		select {
 		case msg := <- message:
 			encoded, err := json.Marshal(msg)
-			checker(err)
+			def.Check(err)
 			
 			connection.Write(encoded)
 		}
 	}
 }
 
-func watchdog(index int, kick <- chan bool) {
-	_remote[index].alive = true
+func watchdog(r *Remote, kick <- chan bool) {
+	r.alive = true
 	for i := 0; i < 10; i++ {
 		time.Sleep(50*time.Millisecond)
 		select {
@@ -121,22 +115,22 @@ func watchdog(index int, kick <- chan bool) {
 		default:
 		}
 	}
-	_remote[index].alive = false
+	r.alive = false
 }
 
-func connect_remote(r *remote) {
-	listen_addr, err := net.ResolveUDPAddr("udp", _localip + PORT)
-	state.Check(err)
+func connect_remote(r *Remote) {
+	listen_addr, err := net.ResolveUDPAddr("udp", _localip + def.PORT)
+	def.Check(err)
 	in_connection, _ := net.ListenUDP("udp", listen_addr)
-	state.Check(err)
+	def.Check(err)
 	defer in_connection.Close()
 	
 	local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
-	state.Check(err)
-	target_addr,err := net.ResolveUDPAddr("udp", string(r.address) + PORT)
-	state.Check(err)
+	def.Check(err)
+	target_addr,err := net.ResolveUDPAddr("udp", string(r.address) + def.PORT)
+	def.Check(err)
 	out_connection, err := net.DialUDP("udp", local_addr, target_addr)
-	state.Check(err)
+	def.Check(err)
 	defer out_connection.Close()
 	
 	r.input = in_connection
@@ -144,9 +138,9 @@ func connect_remote(r *remote) {
 	fmt.Println("Device ", r.id , " connected!")
 }
 
-func ip_address(adr interface{}) ip {
+func ip_address(adr interface{}) def.IP {
 	switch a := adr.(type) {
-	case ip:
+	case def.IP:
 		return a
 	case int:
 		if (a > 23 || a < 0) {
@@ -154,7 +148,7 @@ func ip_address(adr interface{}) ip {
 			for {
 			}
 		} else {
-			return WORKSPACE[a]
+			return def.WORKSPACE[a]
 		}
 	default:
 		fmt.Println("Wrong data type passed to network.Init. Try string or workspace number.")
@@ -164,7 +158,7 @@ func ip_address(adr interface{}) ip {
 
 func get_localip() string {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
-	state.Check(err)
+	def.Check(err)
 	defer conn.Close()
 
 	ip_with_port := conn.LocalAddr().String()
@@ -179,9 +173,3 @@ func get_localip() string {
 	return ip
 }
 
-func checker(e error) {
-	if e != nil {
-		log.Print(e)
-		//continue
-	}
-}

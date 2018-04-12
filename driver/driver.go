@@ -5,7 +5,8 @@ import ("fmt"
 	"net"
 	"time"
 )
-import m "../state"
+
+import def "../def"
 
 const _pollRate = 20 * time.Millisecond
 
@@ -15,18 +16,6 @@ var _mtx sync.Mutex
 var _conn net.Conn
 //var d elevio.MotorDirection = elevio.MD_Up
 
-
-type ButtonType int
-const (
-	BT_HallUp   ButtonType = 0
-	BT_HallDown            = 1
-	BT_Cab                 = 2
-)
-
-type ButtonEvent struct {
-	Floor  int
-	Button ButtonType
-}
 
 
 
@@ -46,13 +35,13 @@ func Init(addr string, numFloors int) {
 }
 
 
-func SetMotorDirection(dir m.MotorDirection) {
+func SetMotorDirection(dir def.MotorDirection) {
 	_mtx.Lock()
 	defer _mtx.Unlock()
 	_conn.Write([]byte{1, byte(dir), 0, 0})
 }
 
-func SetButtonLamp(button ButtonType, floor int, value bool) {
+func SetButtonLamp(button def.ButtonType, floor int, value bool) {
 	_mtx.Lock()
 	defer _mtx.Unlock()
 	_conn.Write([]byte{2, byte(button), byte(floor), toByte(value)})
@@ -78,15 +67,15 @@ func SetStopLamp(value bool) {
 
 
 
-func PollButtons(receiver chan<- ButtonEvent) {
+func PollButtons(receiver chan<- def.ButtonEvent) {
 	prev := make([][3]bool, _numFloors)
 	for {
 		time.Sleep(_pollRate)
 		for f := 0; f < _numFloors; f++ {
-			for b := ButtonType(0); b < 3; b++ {
+			for b := def.ButtonType(0); b < 3; b++ {
 				v := getButton(b, f)
 				if v != prev[f][b] && v != false {
-					receiver <- ButtonEvent{f, ButtonType(b)}
+					receiver <- def.ButtonEvent{f, def.ButtonType(b)}
 				}
 				prev[f][b] = v
 			}
@@ -130,7 +119,7 @@ func PollObstructionSwitch(receiver chan<- bool) {
 	}
 }
 
-func getButton(button ButtonType, floor int) bool {
+func getButton(button def.ButtonType, floor int) bool {
 	_mtx.Lock()
 	defer _mtx.Unlock()
 	_conn.Write([]byte{6, byte(button), byte(floor), 0})
