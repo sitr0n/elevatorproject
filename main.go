@@ -51,7 +51,6 @@ func main() {
 	go driver.PollObstructionSwitch(ch_obstr)
 	go driver.PollStopButton(ch_stop)
 	
-	//go ele.Save_state(ch_newstate, &elevator)
 
 	//ch_listen <- true
 	for {

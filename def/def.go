@@ -2,7 +2,7 @@ package def
 
 import "log"
 
-var PORT []string =  []string 	{":10001"
+var PORT []string =  []string 	{":10001",
 				 ":10002"}
 
 type IP string

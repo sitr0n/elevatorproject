@@ -17,7 +17,7 @@ type Remote struct {
 	output 		*net.UDPConn
 	address  	def.IP
 	alive 		bool
-	send		chan interface{}
+	Send		chan interface{}
 	receive		chan interface{}
 	state 		def.Elevator
 }
@@ -26,21 +26,23 @@ var _localip string
 
 func Init(first_remote interface{}, second_remote interface{}, r *[def.FLOORS]Remote, ch_order chan <- def.Order, ch_ack chan <- bool) {
 	_localip = get_localip()
-	r[0].id = 0
+	for i := 0; i < def.ELEVATORS; i++ {
+		fmt.Println("init", i)
+		r[i].id = i
+		r[i].alive = false
+		r[i].Send = make(chan interface{})
+	}
 	r[0].address = ip_address(first_remote)
-	r[0].alive = false
-	r[1].id = 1
 	r[1].address = ip_address(second_remote)
-	r[1].alive = false
 	
 	connect_remote(&r[0])
 	connect_remote(&r[1])
 	
 	go remote_listener(&r[0], ch_order, ch_ack)
-	go remote_broadcaster(r[0].output, r[0].send)
+	go remote_broadcaster(r[0].output, r[0].Send)
 	
 	go remote_listener(&r[1], ch_order, ch_ack)
-	go remote_broadcaster(r[1].output, r[1].send)
+	go remote_broadcaster(r[1].output, r[1].Send)
 	
 }
 
@@ -101,6 +103,7 @@ func remote_broadcaster(connection *net.UDPConn, message <- chan interface{}) {
 			def.Check(err)
 			
 			connection.Write(encoded)
+			fmt.Println("Wrote: ", encoded)
 		}
 	}
 }
@@ -127,7 +130,7 @@ func connect_remote(r *Remote) {
 	
 	local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
 	def.Check(err)
-	target_addr,err := net.ResolveUDPAddr("udp", string(r.address) + def.PORT)
+	target_addr,err := net.ResolveUDPAddr("udp", string(r.address) + def.PORT[r.id])
 	def.Check(err)
 	out_connection, err := net.DialUDP("udp", local_addr, target_addr)
 	def.Check(err)

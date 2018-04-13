@@ -17,7 +17,9 @@ func Init() {
 	ch_ack := make(chan bool)
 	ch_order := make(chan def.Order)
 	network.Init(10, 11, &remote, ch_order, ch_ack)
-	
+	time.Sleep(1*time.Second)
+
+	remote[0].Send <- "wopwop"
 	fmt.Println(remote[0])
 }
 
