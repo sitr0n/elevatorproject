@@ -119,7 +119,7 @@ func watchdog(r *Remote, kick <- chan bool) {
 }
 
 func connect_remote(r *Remote) {
-	listen_addr, err := net.ResolveUDPAddr("udp", _localip + def.PORT)
+	listen_addr, err := net.ResolveUDPAddr("udp", _localip + def.PORT[r.id])
 	def.Check(err)
 	in_connection, _ := net.ListenUDP("udp", listen_addr)
 	def.Check(err)

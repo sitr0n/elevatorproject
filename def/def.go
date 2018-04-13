@@ -2,7 +2,8 @@ package def
 
 import "log"
 
-const PORT string = ":10001"
+var PORT []string =  []string 	{":10001"
+				 ":10002"}
 
 type IP string
 var WORKSPACE []IP = []IP	 {"0",
