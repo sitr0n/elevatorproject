@@ -12,11 +12,31 @@ import def "../def"
 
 
 func Init() {
-	//var elevator = def.Elevator{}
-	var remote [def.FLOORS]network.Remote
-	ch_ack := make(chan bool)
-	ch_order := make(chan def.Order)
+	var elevator = def.Elevator{}
+	Load_state(&elevator)
+	driver.Init("localhost:15657", def.FLOORS)
+	
+	var remote [def.ELEVATORS]network.Remote
+	ch_ack 		:= make(chan bool)
+	ch_order 	:= make(chan def.Order)
+	ch_obstr   	:= make(chan bool)
+	ch_stop    	:= make(chan bool)
+	
 	network.Init(10, 11, &remote, ch_order, ch_ack)
+	
+	ch_buttons := make(chan def.ButtonEvent)
+	go Button_manager(ch_buttons, &elevator, &remote)
+	//go driver.PollButtons(ch_buttons)
+	
+	ch_floors  := make(chan int)
+	go Event_manager(ch_floors, &elevator)
+	go driver.PollFloorSensor(ch_floors)
+	
+		
+	go driver.PollObstructionSwitch(ch_obstr)
+	go driver.PollStopButton(ch_stop)
+
+	
 	time.Sleep(1*time.Second)
 
 	remote[0].Send <- "wopwop"
@@ -36,7 +56,7 @@ func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
 	timeout <- true
 }
 
-func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator) {
+func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote) {
 	for {
 		select {
 		case event := <- b:
@@ -52,13 +72,14 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator) {
 					move_to_next_floor(e)
 				}
 			} else { 
-				//bcast <- order
-				//local_cost := Evaluate(*e, order)
-				//remote1 := network.Get_remote(0)
-				//remote2 := network.Get_remote(2)
+				for i := 0; i < def.ELEVATORS; i++ {
+					remote[i].Send <- order
+				}
 				
-				//cost1 := Evaluate(remote1.state, order)
-				//cost2 := Evaluate(remote2.state, order)
+				//local_cost := Evaluate(*e, order)
+				
+				//cost1 := Evaluate(remote[0].State, order)
+				//cost2 := Evaluate(remote[1].State, order)
 				
 			
 				
@@ -66,9 +87,6 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator) {
 			        //poll states
 			        //time.Sleep(100*Millisecond)
 				/*
-				cost_local := driver.Evaluate(e)
-				cost_e2 := driver.Evaluate(e2)
-				cost_e3 := driver.Evaluate(e3)
 			        Choose_elevator()
 				
 				if (network.is_Alive)
@@ -189,7 +207,7 @@ func Save_state(state *def.Elevator) {
 func Load_state(state *def.Elevator) {
 	fmt.Println("\nLoading data...\n")
 	
-	jsonState, err := ioutil.ReadFile("state/state.json")
+	jsonState, err := ioutil.ReadFile("elevator/state.json")
 	def.Check(err)
 	
 	err = json.Unmarshal(jsonState, &state)
