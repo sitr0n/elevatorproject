@@ -1,6 +1,9 @@
 package def
 
-import "log"
+import(
+		"log"
+		"time"
+)
 
 var PORT []string =  []string 	{":10001",
 				 ":10002"}
@@ -47,6 +50,9 @@ type Elevator struct {
 type Order struct {
 	Dir MotorDirection
 	Floor int
+	ID int
+	Stamp time.Time
+	Piss int
 }
 
 type ButtonType int
@@ -74,3 +80,5 @@ func Check(e error) {
 		//continue
 	}
 }
+
+
