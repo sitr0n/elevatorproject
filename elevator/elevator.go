@@ -26,7 +26,6 @@ func Init() {
 	
 	network.Init(10, 11, &remote, ch_order, ch_ack)
 	
-<<<<<<< HEAD
 	ch_buttons := make(chan def.ButtonEvent)
 	go Button_manager(ch_buttons, &elevator, &remote)
 	//go driver.PollButtons(ch_buttons)
@@ -39,9 +38,7 @@ func Init() {
 	go driver.PollObstructionSwitch(ch_obstr)
 	go driver.PollStopButton(ch_stop)
 
-	
-=======
->>>>>>> eac38eb2964cb053276c9ef231e42d7154e1e697
+
 	time.Sleep(1*time.Second)
 
 	remote[0].Send <- "wopwop"
