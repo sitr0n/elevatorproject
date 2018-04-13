@@ -28,8 +28,9 @@ func Init() {
 	
 	
 	ch_buttons := make(chan def.ButtonEvent)
-	go Button_manager(ch_buttons, &elevator, &remote)
+	go Button_manager(ch_buttons, &elevator, &remote, ch_stop)
 	go driver.PollButtons(ch_buttons)
+	go driver.PollStopButton(ch_stop)
 	
 	ch_floors  := make(chan int)
 	go Event_manager(ch_floors, &elevator)
@@ -81,7 +82,7 @@ func decide_to_take_order(order def.Order, elevator def.Elevator, remote [def.EL
 	return true
 }
 
-func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote) {
+func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote, s <-chan bool) {
 	for {
 		select {
 		case event := <- b:
@@ -124,6 +125,17 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 			Save_state(e)
 			remote[0].Send_state()
 			remote[1].Send_state()
+		
+		case stop := <-s:
+			var prevDir def.MotorDirection
+			if stop == true {
+				prevDir = e.Dir
+				e.Dir = def.MD_Stop
+				
+			} else {
+				e.Dir = prevDir
+			}
+			
 		}
 	}
 }
