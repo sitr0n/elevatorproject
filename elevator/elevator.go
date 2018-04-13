@@ -24,6 +24,9 @@ func Init() {
 	ch_obstr   	:= make(chan bool)
 	ch_stop    	:= make(chan bool)
 	
+	network.Init(10, 11, &remote)
+	
+	
 	ch_buttons := make(chan def.ButtonEvent)
 	go Button_manager(ch_buttons, &elevator, &remote)
 	go driver.PollButtons(ch_buttons)
@@ -31,6 +34,10 @@ func Init() {
 	ch_floors  := make(chan int)
 	go Event_manager(ch_floors, &elevator)
 	go driver.PollFloorSensor(ch_floors)
+	
+	ch_add_order := make(chan def.Order)
+	ch_remove_order := make(chan def.Order)
+	go order_queue(ch_add_order, ch_remove_order, ch_buttons)
 	
 		
 	go driver.PollObstructionSwitch(ch_obstr)
@@ -302,12 +309,12 @@ func Evaluate(e def.Elevator, o def.Order) int {
 	return value
 }
 
-func Order_queue(ch_add_order <-chan def.Order, ch_remove_order <-chan def.Order) {
+func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, ch_buttons chan<- def.ButtonEvent) {
 
 	var q []def.Order
 	
 	for {
-		timecheck_order_queue(q)
+		timecheck_order_queue(q, ch_buttons, ch_remove_order)
 		select {
 		case newQ := <- ch_add_order:
 			q = append(q, newQ)
@@ -327,15 +334,19 @@ func Order_queue(ch_add_order <-chan def.Order, ch_remove_order <-chan def.Order
 	}
 }
 
-func timecheck_order_queue(q []def.Order) {
+func timecheck_order_queue(q []def.Order, ch_buttons chan<- def.ButtonEvent, ch_remove_order chan<- def.Order) {
 	for _, c := range q {
 		if time.Now().Sub(c.Stamp) > 30*time.Second {
 			fmt.Println(c.ID," failed")
-			//TODO: Force other elevators to take order
+			//TODO: remove order from slice
+			//TODO: create local order - create new buttoneven which is Cab-order
+			//TODO: send to channnel which goes to button_manager
+			newEvent :=  def.ButtonEvent{Floor: c.Floor, Button: def.BT_Cab}
+			ch_buttons <- newEvent
+			ch_remove_order <- c
 		}
 	}
 }
-
 func random_generator(size int) int {
 	nanotime := rand.NewSource(time.Now().UnixNano())
 	convert := rand.New(nanotime)
