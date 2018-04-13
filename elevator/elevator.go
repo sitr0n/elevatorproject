@@ -19,16 +19,14 @@ func Init() {
 	driver.Init("localhost:15657", def.FLOORS)
 	
 	var remote [def.ELEVATORS]network.Remote
-	ch_ack 		:= make(chan bool)
-	ch_order 	:= make(chan def.Order)
+	network.Init(10, 11, &remote)
+	
 	ch_obstr   	:= make(chan bool)
 	ch_stop    	:= make(chan bool)
 	
-	network.Init(10, 11, &remote, ch_order, ch_ack)
-	
 	ch_buttons := make(chan def.ButtonEvent)
 	go Button_manager(ch_buttons, &elevator, &remote)
-	//go driver.PollButtons(ch_buttons)
+	go driver.PollButtons(ch_buttons)
 	
 	ch_floors  := make(chan int)
 	go Event_manager(ch_floors, &elevator)
@@ -41,7 +39,8 @@ func Init() {
 
 	time.Sleep(1*time.Second)
 
-	remote[0].Send <- "wopwop"
+	fmt.Println("waiting...")
+	//<- remote.Orderchan
 	fmt.Println(remote[0])
 }
 
@@ -56,6 +55,23 @@ func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
 		}
 	}
 	timeout <- true
+}
+
+func decide_to_take_order(order def.Order, elevator def.Elevator, remote [def.ELEVATORS]network.Remote) bool {
+	
+        local_cost := Evaluate(elevator, order)
+        
+        remote1_cost := Evaluate(remote[0].State, order)
+        remote2_cost := Evaluate(remote[1].State, order)
+        
+        if (remote[0].Alive && (local_cost > remote1_cost)) {
+        	return false
+        }
+        
+        if (remote[1].Alive && (local_cost > remote2_cost)) {
+        	return false
+        }
+	return true
 }
 
 func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote) {
@@ -75,50 +91,32 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 				}
 			} else { 
 				for i := 0; i < def.ELEVATORS; i++ {
-					remote[i].Send <- order
+					remote[i].Send_order(order)
 				}
 				
-				//local_cost := Evaluate(*e, order)
+				decision := decide_to_take_order(order, *e, *remote)
+				if(decision == true) {
+					Order_accept(e, order)
+					remote[0].Send_ack()
+					remote[1].Send_ack()
+				}
 				
-				//cost1 := Evaluate(remote[0].State, order)
-				//cost2 := Evaluate(remote[1].State, order)
-				
-			
-				
-			        //network.broadcast_state()
-			        //poll states
-			        //time.Sleep(100*Millisecond)
-				/*
-			        Choose_elevator()
-				
-				if (network.is_Alive)
-					wd_timeout := make(chan bool)
-					wd_cancel := make(chan bool)
-					ack_1 := make(chan bool)
-					ack_2 := make(chan bool)
-					
-					Activate_timeout(ch_cancel, ch_timeout)
-					network.Ack_listener1(ack1)
-					netowrk.Ack_listener2(ack2)
+				timeout := make(chan bool)
+				timer_cancel := make(chan bool)
+				go timeout_timer(timer_cancel, timeout)
+				if (decision == false) {
 					select {
-					case <- ack_1:
-						wd_cancel <- true
-						break
-					case <- ack_2:
-						wd_cancel <- true
-						break
-					case <- wd_timeout
+					case <- remote[0].Ackchan:
+						timer_cancel <- true
+					
+					case <- timeout:
 						Order_accept(e, order)
 					}
-				else {
-					Order_accept(e, order)
 				}
-				*/
-				//TODO: Broadcast corresponding order
-				//TODO: Evaluate all elevators and decide which one taking the order
-				//TODO: Update corresponding elevator struct -> Stops[event.Floor]
 			}
 			Save_state(e)
+			remote[0].Send_state()
+			remote[1].Send_state()
 		}
 	}
 }

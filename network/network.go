@@ -16,29 +16,36 @@ type Remote struct {
 	input		*net.UDPConn
 	output 		*net.UDPConn
 	address  	def.IP
-	alive 		bool
-	Send		chan interface{}
-	Receive		chan interface{}
+	Alive 		bool
+	send		chan interface{}
+	Orderchan	chan def.Order
+	Ackchan		chan bool
 	State 		def.Elevator
 }
 
 var _localip string
 
-func Init(first_remote interface{}, second_remote interface{}, r *[def.ELEVATORS]Remote, ch_order chan <- def.Order, ch_ack chan <- bool) {
+func Init(first_remote interface{}, second_remote interface{}, r *[def.ELEVATORS]Remote) {
 	_localip = get_localip()
 	r[0].address = ip_address(first_remote)
 	r[1].address = ip_address(second_remote)
+	
+	ch_ack := make(chan bool)
+	ch_order := make(chan def.Order)
+	
 	for i := 0; i < def.ELEVATORS; i++ {
 		r[i].id = i
-		r[i].alive = false
-		r[i].Send = make(chan interface{})
-		r[i].Receive = make(chan interface{})
+		r[i].Alive = false
+		r[i].send = make(chan interface{})
+		r[i].Orderchan = ch_order
+		r[i].Ackchan = ch_ack
 		
 		connect_remote(&r[i])
 		
-		go remote_listener(&r[i], ch_order, ch_ack)
-		go remote_broadcaster(r[i].output, r[i].Send)
+		go remote_listener(&r[i], r[i].Orderchan, r[i].Ackchan)
+		go remote_broadcaster(r[i].output, r[i].send)
 	}
+	go send_ping(r)
 }
 
 
@@ -57,7 +64,7 @@ func remote_listener(r *Remote, ch_order chan <- def.Order, ch_ack chan <- bool)
 	for {
 		length, _, _ := r.input.ReadFromUDP(inputBytes)
 		wd_kick <- true
-		if (r.alive == false) {
+		if (r.Alive == false) {
 			go watchdog(r, wd_kick)
 			fmt.Println("Connection established!")
 		}
@@ -66,7 +73,9 @@ func remote_listener(r *Remote, ch_order chan <- def.Order, ch_ack chan <- bool)
 		case ACK_SIZE:
 			err := json.Unmarshal(inputBytes[:length], &ack)
 			def.Check(err)
-			ch_ack <- ack
+			if (ack == true) {
+				ch_ack <- ack
+			}
 			break
 			
 		case ORDER_SIZE: 
@@ -84,9 +93,38 @@ func remote_listener(r *Remote, ch_order chan <- def.Order, ch_ack chan <- bool)
 			break
 		
 		default:
-			fmt.Println("Oops! Received something unexpected from remote...")
+			fmt.Println("Oops! Received something unexpected from remote", r.id)
 		}
 	}
+}
+
+func send_ping(remote *[def.ELEVATORS]Remote) {
+	for {
+		time.Sleep(100*time.Millisecond)
+		for i := 0; i < def.ELEVATORS; i++ {
+			remote[i].send <- false
+		}
+	}
+}
+
+func (r Remote) Get_state() def.Elevator {
+	return r.State
+}
+
+func (r Remote) Send_order(order def.Order) {
+	r.send <- order
+}
+
+func (r Remote) Send_state() {
+	r.send <- r.State
+}
+
+func (r Remote) Send_ack() {
+	r.send <- true
+}
+
+func (r Remote) Send_ping() {
+	r.send <- false
 }
 
 func remote_broadcaster(connection *net.UDPConn, message <- chan interface{}) {
@@ -104,7 +142,7 @@ func remote_broadcaster(connection *net.UDPConn, message <- chan interface{}) {
 }
 
 func watchdog(r *Remote, kick <- chan bool) {
-	r.alive = true
+	r.Alive = true
 	for i := 0; i < 10; i++ {
 		time.Sleep(50*time.Millisecond)
 		select {
@@ -113,7 +151,7 @@ func watchdog(r *Remote, kick <- chan bool) {
 		default:
 		}
 	}
-	r.alive = false
+	r.Alive = false
 }
 
 func connect_remote(r *Remote) {
