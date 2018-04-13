@@ -4,11 +4,13 @@ import ("fmt"
 	"encoding/json"
 	"io/ioutil"
 	"time"
+	"math/rand"
 )
 
 import driver "../driver"
 import network "../network"
 import def "../def"
+
 
 
 func Init() {
@@ -17,6 +19,7 @@ func Init() {
 	ch_ack := make(chan bool)
 	ch_order := make(chan def.Order)
 	network.Init(10, 11, &remote, ch_order, ch_ack)
+	
 	time.Sleep(1*time.Second)
 
 	remote[0].Send <- "wopwop"
@@ -216,6 +219,8 @@ func Order_accept(e *def.Elevator, o def.Order) {
 func button_event_to_order(be def.ButtonEvent) def.Order {
 	var order = def.Order{}
 	order.Floor = be.Floor
+	order.ID = random_generator(10000)
+	order.Stamp = time.Now()
 	switch be.Button {
 		case def.BT_Cab:
 			order.Dir = 0
@@ -282,5 +287,43 @@ func Evaluate(e def.Elevator, o def.Order) int {
 	return value
 }
 
+func Order_queue(ch_add_order <-chan def.Order, ch_remove_order <-chan def.Order) {
 
+	var q []def.Order
+	
+	for {
+		timecheck_order_queue(q)
+		select {
+		case newQ := <- ch_add_order:
+			q = append(q, newQ)
+			fmt.Println("added",newQ.ID)
+			
+		case removeQ := <- ch_remove_order:
+			i := 0
+			for _,c := range q {
+				if c.ID == removeQ.ID {
+					fmt.Println("removing ID:", c.ID)
+					q = q[:i+copy(q[i:], q[i+1:])]
+					fmt.Println(q)
+				}
+				i++
+			}			
+		}
+	}
+}
 
+func timecheck_order_queue(q []def.Order) {
+	for _, c := range q {
+		if time.Now().Sub(c.Stamp) > 30*time.Second {
+			fmt.Println(c.ID," failed")
+			//TODO: Force other elevators to take order
+		}
+	}
+}
+
+func random_generator(size int) int {
+	nanotime := rand.NewSource(time.Now().UnixNano())
+	convert := rand.New(nanotime)
+	random := convert.Intn(size) 
+	return random
+}

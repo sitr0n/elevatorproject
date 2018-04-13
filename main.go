@@ -39,6 +39,8 @@ func main() {
 	ch_stop    := make(chan bool)
 	//ch_newstate:= make(chan bool)
 	//ch_bcast   := make(chan state.Elevator)
+	ch_add_order := make(chan def.Order)
+	ch_remove_order := make(chan def.Order)
 	ch_exit	   := make(chan bool)
 
 
@@ -50,7 +52,7 @@ func main() {
 	go driver.PollFloorSensor(ch_floors)
 	go driver.PollObstructionSwitch(ch_obstr)
 	go driver.PollStopButton(ch_stop)
-	
+	go ele.Order_queue(ch_add_order, ch_remove_order)
 
 	//ch_listen <- true
 	for {
