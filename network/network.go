@@ -50,7 +50,7 @@ func Init(first_remote interface{}, second_remote interface{}, r *[def.ELEVATORS
 
 
 
-func remote_listener(r *Remote, ch_order chan <- def.Order, ch_ack chan <- bool) {
+func remote_listener(r *Remote, add_order chan <- def.Order, ch_ack chan <- bool) {
 	var elevator def.Elevator
 	var order def.Order
 	var ack bool = false
@@ -81,7 +81,7 @@ func remote_listener(r *Remote, ch_order chan <- def.Order, ch_ack chan <- bool)
 		case ORDER_SIZE: 
 			err := json.Unmarshal(inputBytes[:length], &order)
 			def.Check(err)
-			ch_order <- order
+			add_order <- order
 			break
 			
 		case STATE_SIZE:
@@ -136,7 +136,7 @@ func remote_broadcaster(connection *net.UDPConn, message <- chan interface{}) {
 			def.Check(err)
 			
 			connection.Write(encoded)
-			fmt.Println("Wrote: ", msg)
+			//fmt.Println("Wrote: ", msg)
 		}
 	}
 }

@@ -10,7 +10,7 @@ var PORT []string =  []string 	{":10001",
 
 type IP string
 var WORKSPACE []IP = []IP	 {"0",
-				  "0",
+				  "129.241.187.140",
 				  "0",
 				  "0",
 				  "0",
@@ -37,7 +37,8 @@ var WORKSPACE []IP = []IP	 {"0",
 const (
 	ELEVATORS = 2
 	FLOORS = 4
-	
+	ADD = true
+	REMOVE = false
 	STOP_WEIGHT = 5
 )
 
