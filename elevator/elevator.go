@@ -5,6 +5,8 @@ import ("fmt"
 	"io/ioutil"
 	"time"
 	//"math/rand"
+	"os"
+	"os/exec"
 )
 
 import driver "../driver"
@@ -12,19 +14,23 @@ import network "../network"
 import def "../def"
 
 
+func Init(remote_address []string) {
+	check_remote_address(remote_address)
+	start_elevator_server()
 
-func Init() {
 	var elevator = def.Elevator{}
 	Load_state(&elevator)
 	driver.Init("localhost:15657", def.FLOORS)
 	
 	var remote [def.ELEVATORS]network.Remote
-	network.Init(10, 11, &remote)
+	network.Init(remote_address, &remote)
 	
 	//network.Init(10, 11, &remote)
 	//<- remote[0].Orderchan
 	ch_obstr   	:= make(chan bool)
+
 	ch_stop    	:= make(chan bool, 100)
+
 	ch_buttons := make(chan def.ButtonEvent)
 	ch_floors  := make(chan int)
 	ch_add_order := make(chan def.Order)
@@ -38,31 +44,29 @@ func Init() {
 	go order_queue(ch_add_order, ch_remove_order, ch_buttons)	
 	go driver.PollObstructionSwitch(ch_obstr)
 	go driver.PollStopButton(ch_stop)
-
-
-	time.Sleep(1*time.Second)
-
-	fmt.Println("waiting...")
-	//<- remote.Orderchan
-	fmt.Println(remote[0])
 }
 
-func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
-	for i := 0; i < 10; i++ {
-		time.Sleep(500*time.Millisecond)
-		select {
-		case <- cancel:
-			return
+func start_elevator_server() {
+	ElevatorServer := exec.Command("gnome-terminal", "-x", "sh", "-c", "ElevatorServer;")
+	err := ElevatorServer.Start()
+	def.Check(err)
+	time.Sleep(500*time.Millisecond)
+}
 
-		default:
-		}
+func check_remote_address(arg []string) {
+	array_length := len(arg)
+	if (array_length != def.ELEVATORS) {
+		fmt.Println("Expecting", def.ELEVATORS, "arguments.")
+		fmt.Println("Enter remote elevator IP address(es) or workstation number(s).")
+		os.Exit(0)
 	}
-	timeout <- true
+
 }
 
 
 
 func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote, s <-chan bool, add_order chan<- def.Order, remove_order chan def.Order) {
+
 	for {
 		select {
 		case event := <- b:
@@ -79,29 +83,19 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 					move_to_next_floor(e)
 				}
 			} else { 
-				for i := 0; i < def.ELEVATORS; i++ {
-					remote[i].Send_order(order)
-				}
+				network.Broadcast_order(order, remote)
 				
 				decision := decide_to_take_order(order, *e, *remote)
 				if(decision == true) {
 					Order_state(e, order)
 					add_order <- order 
 					Order_accept(e, order, remove_order) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
-					remote[0].Send_ack()
-					remote[1].Send_ack()
-				}
+					network.Send_ack(*remote)
+				} else {
 				
-				timeout := make(chan bool)
-				timer_cancel := make(chan bool)
-				go timeout_timer(timer_cancel, timeout)
-				if (decision == false) {
-					select {
-					case <- remote[0].Ackchan:
-						timer_cancel <- true
-					
-					case <- timeout:
-						Order_state(e, order)
+					order_taken := network.Await_ack(remote)
+					if (order_taken == false) {
+						Order_accept(e, order, remove_order)
 					}
 				}
 			}
