@@ -52,18 +52,7 @@ func Init() {
 	fmt.Println(remote[0])
 }
 
-func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
-	for i := 0; i < 10; i++ {
-		time.Sleep(500*time.Millisecond)
-		select {
-		case <- cancel:
-			return
 
-		default:
-		}
-	}
-	timeout <- true
-}
 
 func decide_to_take_order(order def.Order, elevator def.Elevator, remote [def.ELEVATORS]network.Remote) bool {
 	
@@ -82,6 +71,8 @@ func decide_to_take_order(order def.Order, elevator def.Elevator, remote [def.EL
 	return true
 }
 
+
+
 func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote, s <-chan bool) {
 	for {
 		select {
@@ -98,28 +89,16 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 					move_to_next_floor(e)
 				}
 			} else { 
-				for i := 0; i < def.ELEVATORS; i++ {
-					remote[i].Send_order(order)
-				}
+				network.Broadcast_order(order, remote)
 				
 				decision := decide_to_take_order(order, *e, *remote)
 				if(decision == true) {
 					Order_accept(e, order)
-					remote[0].Send_ack()
-					remote[1].Send_ack()
-				}
+					network.Send_ack(*remote)
+				} else {
 				
-				timeout := make(chan bool)
-				timer_cancel := make(chan bool)
-				go timeout_timer(timer_cancel, timeout)
-				if (decision == false) {
-					select {
-					case <- remote[0].Ackchan:
-						timer_cancel <- true
-					
-					case <- timeout:
-						Order_accept(e, order)
-					}
+					delivered := network.Await_ack(remote)
+					fmt.Println(delivered)
 				}
 			}
 			Save_state(e)

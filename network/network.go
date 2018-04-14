@@ -49,6 +49,47 @@ func Init(first_remote interface{}, second_remote interface{}, r *[def.ELEVATORS
 }
 
 
+func Await_ack(remote *[def.ELEVATORS]Remote) bool {
+	timeout := make(chan bool)
+	timer_cancel := make(chan bool)
+	go timeout_timer(timer_cancel, timeout)
+	select {
+	case <- remote[0].Ackchan:
+		timer_cancel <- true
+		return true
+	
+	case <- timeout:
+		return false
+	}
+}
+
+func Broadcast_order(order def.Order, r *[def.ELEVATORS]Remote) {
+	for i := 0; i < def.ELEVATORS; i++{
+		r[i].send <- order
+	}
+}
+
+func (r Remote) Get_state() def.Elevator {
+	return r.State
+}
+
+func (r Remote) Send_order(order def.Order) {
+	r.send <- order
+}
+
+func (r Remote) Send_state() {
+	r.send <- r.State
+}
+
+func Send_ack(r [def.ELEVATORS]Remote) {
+	for i := 0; i < def.ELEVATORS; i++{
+		r[i].send <- true
+	}
+}
+
+func (r Remote) Send_ping() {
+	r.send <- false
+}
 
 func remote_listener(r *Remote, ch_order chan <- def.Order, ch_ack chan <- bool) {
 	var elevator def.Elevator
@@ -100,32 +141,26 @@ func remote_listener(r *Remote, ch_order chan <- def.Order, ch_ack chan <- bool)
 
 func send_ping(remote *[def.ELEVATORS]Remote) {
 	for {
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(200*time.Millisecond)
 		for i := 0; i < def.ELEVATORS; i++ {
 			remote[i].send <- false
 		}
 	}
 }
 
-func (r Remote) Get_state() def.Elevator {
-	return r.State
+func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
+	for i := 0; i < 10; i++ {
+		time.Sleep(500*time.Millisecond)
+		select {
+		case <- cancel:
+			return
+
+		default:
+		}
+	}
+	timeout <- true
 }
 
-func (r Remote) Send_order(order def.Order) {
-	r.send <- order
-}
-
-func (r Remote) Send_state() {
-	r.send <- r.State
-}
-
-func (r Remote) Send_ack() {
-	r.send <- true
-}
-
-func (r Remote) Send_ping() {
-	r.send <- false
-}
 
 func remote_broadcaster(connection *net.UDPConn, message <- chan interface{}) {
 	fmt.Println("Starting remote bcaster")
