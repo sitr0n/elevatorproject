@@ -15,8 +15,6 @@ import def "../def"
 
 type Remote struct {
 	id		int
-	//input		*net.UDPConn
-	//output 		*net.UDPConn
 	address  	string
 	Alive 		bool
 	send		chan interface{}
@@ -106,8 +104,6 @@ func (r Remote) remote_listener(add_order chan <- def.Order, ch_ack chan <- bool
 	defer connection.Close()
 	
 	
-	//r.input = connection
-	
 	fmt.Println("Device ", r.id , " connected!\n")
 
 	var elevator def.Elevator
@@ -119,9 +115,9 @@ func (r Remote) remote_listener(add_order chan <- def.Order, ch_ack chan <- bool
 	wd_kick := make(chan bool)
 	inputBytes := make([]byte, 4096)
 	
-	fmt.Println("Starting remote", r.id, "listener!\n", "Input: ")
+	fmt.Println("Starting remote", r.id, "listener!\n")
 	for {
-		fmt.Println("Listening on", connection)
+		fmt.Println("this works...")
 		length, _, _ := connection.ReadFromUDP(inputBytes)
 		wd_kick <- true
 		fmt.Println("Received something!\n\n")
@@ -161,8 +157,7 @@ func (r Remote) remote_listener(add_order chan <- def.Order, ch_ack chan <- bool
 
 func send_ping(remote *[def.ELEVATORS]Remote) {
 	for {
-		time.Sleep(1000*time.Millisecond)
-		fmt.Println("sending ping")
+		time.Sleep(200*time.Millisecond)
 		for i := 0; i < def.ELEVATORS; i++ {
 			remote[i].send <- false
 		}
@@ -193,7 +188,6 @@ func (r Remote) remote_broadcaster(message <- chan interface{}) {
 	def.Check(err)
 	defer connection.Close()
 
-	//r.output = connection
 
 	for {
 		select {
@@ -202,7 +196,14 @@ func (r Remote) remote_broadcaster(message <- chan interface{}) {
 			def.Check(err)
 			
 			connection.Write(encoded)
-			//fmt.Println("Wrote: ", msg)
+			fmt.Println("Wrote: ", msg)
+
+		case mesg := <- r.send:
+			encoded, err := json.Marshal(mesg)
+			def.Check(err)
+			
+			connection.Write(encoded)
+			fmt.Println("Wrote: ", mesg)
 		}
 	}
 }
