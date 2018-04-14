@@ -41,10 +41,10 @@ func Init(remote_address []string, r *[def.ELEVATORS]Remote) {
 		r[i].Orderchan = ch_order
 		r[i].Ackchan = ch_ack
 		
-		connect_remote(&r[i])
+		r[i].connect_remote()
 		
-		go remote_listener(&r[i], r[i].Orderchan, r[i].Ackchan)
-		go remote_broadcaster(r[i].output, r[i].send)
+		go r[i].remote_listener(r[i].Orderchan, r[i].Ackchan)
+		go r[i].remote_broadcaster(r[i].send)
 	}
 	go send_ping(r)
 }
@@ -98,7 +98,18 @@ func (r Remote) Send_ping() {
 	r.send <- false
 }
 
-func remote_listener(r *Remote, add_order chan <- def.Order, ch_ack chan <- bool) {
+func (r Remote) remote_listener(add_order chan <- def.Order, ch_ack chan <- bool) {
+	listen_addr, err := net.ResolveUDPAddr("udp", _localip + def.PORT[r.id])
+	def.Check(err)
+	connection, _ := net.ListenUDP("udp", listen_addr)
+	def.Check(err)
+	defer connection.Close()
+	
+	
+	r.input = connection
+	
+	fmt.Println("Device ", r.id , " connected!\n", "Input: ", r.input)
+
 	var elevator def.Elevator
 	var order def.Order
 	var ack bool = false
@@ -108,12 +119,14 @@ func remote_listener(r *Remote, add_order chan <- def.Order, ch_ack chan <- bool
 	wd_kick := make(chan bool)
 	inputBytes := make([]byte, 4096)
 	
-	fmt.Println("Starting remote", r.id, "listener!")
+	fmt.Println("Starting remote", r.id, "listener!\n", "Input: ", r.input)
 	for {
+		fmt.Println("this works...")
 		length, _, _ := r.input.ReadFromUDP(inputBytes)
 		wd_kick <- true
+		fmt.Println("Received something!\n\n")
 		if (r.Alive == false) {
-			go watchdog(r, wd_kick)
+			go r.watchdog(wd_kick)
 			fmt.Println("Connection established!")
 		}
 		
@@ -169,8 +182,18 @@ func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
 }
 
 
-func remote_broadcaster(connection *net.UDPConn, message <- chan interface{}) {
+func (r Remote) remote_broadcaster(message <- chan interface{}) {
 	fmt.Println("Starting remote bcaster")
+	local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
+	def.Check(err)
+	target_addr,err := net.ResolveUDPAddr("udp", string(r.address) + def.PORT[r.id])
+	def.Check(err)
+	connection, err := net.DialUDP("udp", local_addr, target_addr)
+	def.Check(err)
+	defer connection.Close()
+
+	r.output = connection
+
 	for {
 		select {
 		case msg := <- message:
@@ -183,7 +206,7 @@ func remote_broadcaster(connection *net.UDPConn, message <- chan interface{}) {
 	}
 }
 
-func watchdog(r *Remote, kick <- chan bool) {
+func (r Remote) watchdog(kick <- chan bool) {
 	r.Alive = true
 	for i := 0; i < 10; i++ {
 		time.Sleep(50*time.Millisecond)
@@ -196,24 +219,8 @@ func watchdog(r *Remote, kick <- chan bool) {
 	r.Alive = false
 }
 
-func connect_remote(r *Remote) {
-	listen_addr, err := net.ResolveUDPAddr("udp", _localip + def.PORT[r.id])
-	def.Check(err)
-	in_connection, _ := net.ListenUDP("udp", listen_addr)
-	def.Check(err)
-	defer in_connection.Close()
+func (r Remote) connect_remote() {
 	
-	local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
-	def.Check(err)
-	target_addr,err := net.ResolveUDPAddr("udp", string(r.address) + def.PORT[r.id])
-	def.Check(err)
-	out_connection, err := net.DialUDP("udp", local_addr, target_addr)
-	def.Check(err)
-	defer out_connection.Close()
-	
-	r.input = in_connection
-	r.output = out_connection
-	fmt.Println("Device ", r.id , " connected!")
 }
 
 func ip_address(adr string) string {

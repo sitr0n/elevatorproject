@@ -39,7 +39,7 @@ func Init(remote_address []string) {
 	go Button_manager(ch_buttons, &elevator, &remote, ch_stop, ch_add_order, ch_remove_order)
 	go driver.PollButtons(ch_buttons)
 	go driver.PollStopButton(ch_stop)
-	go Event_manager(ch_floors, &elevator)
+	go Event_manager(ch_floors, &elevator, &remote)
 	go driver.PollFloorSensor(ch_floors)
 	go order_queue(ch_add_order, ch_remove_order, ch_buttons)	
 	go driver.PollObstructionSwitch(ch_obstr)
@@ -122,7 +122,7 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 	}
 }
 
-func Event_manager(f <- chan int, ep *def.Elevator) {
+func Event_manager(f <- chan int, ep *def.Elevator, remote *[def.ELEVATORS]network.Remote) {
 	prev_floor := -1
 	for {
 		select {
@@ -132,20 +132,26 @@ func Event_manager(f <- chan int, ep *def.Elevator) {
 				ep.CurrentFloor = floor
 				fmt.Println("Current floor: ", ep.CurrentFloor)
 				if (ep.Stops[floor] > 0) {
-					fmt.Println("Stopping at floor ", floor)
-					driver.SetMotorDirection(def.MD_Stop)
-					driver.SetDoorOpenLamp(true)
 					ep.Stops[floor] = 0
-					// fmt.Println("Elevator stops: ", ep.Stops)
-					time.Sleep(5*time.Second)
-					driver.SetDoorOpenLamp(false)
+					open_door()
+					
 				}
 				move_to_next_floor(ep)
 			}
 			Save_state(ep)
 			prev_floor = floor
+
+		
 		}
 	}
+}
+
+func open_door() {
+	//fmt.Println("Stopping at floor ", floor)
+	driver.SetMotorDirection(def.MD_Stop)
+	driver.SetDoorOpenLamp(true)
+	time.Sleep(5*time.Second)
+	driver.SetDoorOpenLamp(false)
 }
 
 func Find_next_stop(e *def.Elevator) def.MotorDirection {
