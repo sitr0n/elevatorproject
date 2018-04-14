@@ -42,7 +42,7 @@ func Init(remote_address []string, r *[def.ELEVATORS]Remote) {
 		//r[i].connect_remote()
 		
 		go r[i].remote_listener(r[i].Orderchan, r[i].Ackchan)
-		go r[i].remote_broadcaster(r[i].send)
+		go r[i].remote_broadcaster()
 	}
 	go send_ping(r)
 }
@@ -87,7 +87,7 @@ func (r Remote) Send_state() {
 }
 
 func Send_ack(r [def.ELEVATORS]Remote) {
-	for i := 0; i < def.ELEVATORS; i++{
+	for i := 0; i < def.ELEVATORS; i++ {
 		r[i].send <- true
 	}
 }
@@ -99,7 +99,7 @@ func (r Remote) Send_ping() {
 func (r Remote) remote_listener(add_order chan <- def.Order, ch_ack chan <- bool) {
 	listen_addr, err := net.ResolveUDPAddr("udp", _localip + def.PORT[r.id])
 	def.Check(err)
-	connection, _ := net.ListenUDP("udp", listen_addr)
+	connection, err := net.ListenUDP("udp", listen_addr)
 	def.Check(err)
 	defer connection.Close()
 	
@@ -117,7 +117,7 @@ func (r Remote) remote_listener(add_order chan <- def.Order, ch_ack chan <- bool
 	
 	fmt.Println("Starting remote", r.id, "listener!\n")
 	for {
-		fmt.Println("this works...")
+		fmt.Println("Listening on", listen_addr)
 		length, _, _ := connection.ReadFromUDP(inputBytes)
 		wd_kick <- true
 		fmt.Println("Received something!\n\n")
@@ -157,7 +157,7 @@ func (r Remote) remote_listener(add_order chan <- def.Order, ch_ack chan <- bool
 
 func send_ping(remote *[def.ELEVATORS]Remote) {
 	for {
-		time.Sleep(200*time.Millisecond)
+		time.Sleep(time.Second)
 		for i := 0; i < def.ELEVATORS; i++ {
 			remote[i].send <- false
 		}
@@ -178,32 +178,25 @@ func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
 }
 
 
-func (r Remote) remote_broadcaster(message <- chan interface{}) {
+func (r Remote) remote_broadcaster() {
 	fmt.Println("Starting remote bcaster")
 	local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
 	def.Check(err)
 	target_addr,err := net.ResolveUDPAddr("udp", string(r.address) + def.PORT[r.id])
 	def.Check(err)
-	connection, err := net.DialUDP("udp", local_addr, target_addr)
+	out_connection, err := net.DialUDP("udp", local_addr, target_addr)
 	def.Check(err)
-	defer connection.Close()
+	defer out_connection.Close()
 
 
 	for {
 		select {
-		case msg := <- message:
+		case msg := <- r.send:
 			encoded, err := json.Marshal(msg)
 			def.Check(err)
 			
-			connection.Write(encoded)
-			fmt.Println("Wrote: ", msg)
-
-		case mesg := <- r.send:
-			encoded, err := json.Marshal(mesg)
-			def.Check(err)
-			
-			connection.Write(encoded)
-			fmt.Println("Wrote: ", mesg)
+			out_connection.Write(encoded)
+			fmt.Println("Wrote: ", msg, "to", r.address + def.PORT[r.id])
 		}
 	}
 }
