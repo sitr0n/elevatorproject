@@ -5,6 +5,8 @@ import ("fmt"
 	"io/ioutil"
 	"time"
 	"math/rand"
+	"os"
+	"os/exec"
 )
 
 import driver "../driver"
@@ -12,20 +14,23 @@ import network "../network"
 import def "../def"
 
 
+func Init(remote_address []string) {
+	check_remote_address(remote_address)
+	start_elevator_server()
 
-func Init() {
 	var elevator = def.Elevator{}
 	Load_state(&elevator)
 	driver.Init("localhost:15657", def.FLOORS)
 	
 	var remote [def.ELEVATORS]network.Remote
-	network.Init(10, 11, &remote)
+	network.Init(remote_address, &remote)
 	
 	ch_obstr   	:= make(chan bool)
 	ch_stop    	:= make(chan bool)
 	
-	network.Init(10, 11, &remote)
-	
+	for{
+
+	}
 	
 	ch_buttons := make(chan def.ButtonEvent)
 	go Button_manager(ch_buttons, &elevator, &remote, ch_stop)
@@ -43,16 +48,24 @@ func Init() {
 		
 	go driver.PollObstructionSwitch(ch_obstr)
 	go driver.PollStopButton(ch_stop)
-
-
-	time.Sleep(1*time.Second)
-
-	fmt.Println("waiting...")
-	//<- remote.Orderchan
-	fmt.Println(remote[0])
 }
 
+func start_elevator_server() {
+	ElevatorServer := exec.Command("gnome-terminal", "-x", "sh", "-c", "ElevatorServer;")
+	err := ElevatorServer.Start()
+	def.Check(err)
+	time.Sleep(500*time.Millisecond)
+}
 
+func check_remote_address(arg []string) {
+	array_length := len(arg)
+	if (array_length != def.ELEVATORS) {
+		fmt.Println("Expecting", def.ELEVATORS, "arguments.")
+		fmt.Println("Enter remote elevator IP address(es) or workstation number(s).")
+		os.Exit(0)
+	}
+
+}
 
 func decide_to_take_order(order def.Order, elevator def.Elevator, remote [def.ELEVATORS]network.Remote) bool {
 	
@@ -97,8 +110,10 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 					network.Send_ack(*remote)
 				} else {
 				
-					delivered := network.Await_ack(remote)
-					fmt.Println(delivered)
+					order_taken := network.Await_ack(remote)
+					if (order_taken == false) {
+						Order_accept(e, order)
+					}
 				}
 			}
 			Save_state(e)

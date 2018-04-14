@@ -5,6 +5,8 @@ import (
 	"net"
 	"time"
 	"encoding/json"
+	"os"
+	"strconv"
 )
 
 import unsafe "unsafe"
@@ -15,7 +17,7 @@ type Remote struct {
 	id		int
 	input		*net.UDPConn
 	output 		*net.UDPConn
-	address  	def.IP
+	address  	string
 	Alive 		bool
 	send		chan interface{}
 	Orderchan	chan def.Order
@@ -25,15 +27,14 @@ type Remote struct {
 
 var _localip string
 
-func Init(first_remote interface{}, second_remote interface{}, r *[def.ELEVATORS]Remote) {
+func Init(remote_address []string, r *[def.ELEVATORS]Remote) {
 	_localip = get_localip()
-	r[0].address = ip_address(first_remote)
-	r[1].address = ip_address(second_remote)
-	
+
 	ch_ack := make(chan bool)
 	ch_order := make(chan def.Order)
 	
 	for i := 0; i < def.ELEVATORS; i++ {
+		r[i].address = ip_address(remote_address[i])
 		r[i].id = i
 		r[i].Alive = false
 		r[i].send = make(chan interface{})
@@ -63,8 +64,14 @@ func Await_ack(remote *[def.ELEVATORS]Remote) bool {
 	}
 }
 
+func Broadcast_state(r *[def.ELEVATORS]Remote) {
+	for i := 0; i < def.ELEVATORS; i++ {
+		r[i].send <- r[i].State
+	}
+}
+
 func Broadcast_order(order def.Order, r *[def.ELEVATORS]Remote) {
-	for i := 0; i < def.ELEVATORS; i++{
+	for i := 0; i < def.ELEVATORS; i++ {
 		r[i].send <- order
 	}
 }
@@ -171,7 +178,7 @@ func remote_broadcaster(connection *net.UDPConn, message <- chan interface{}) {
 			def.Check(err)
 			
 			connection.Write(encoded)
-			fmt.Println("Wrote: ", msg)
+			//fmt.Println("Wrote: ", msg)
 		}
 	}
 }
@@ -209,7 +216,30 @@ func connect_remote(r *Remote) {
 	fmt.Println("Device ", r.id , " connected!")
 }
 
+func ip_address(adr string) string {
+	var is_int = true
+	for _, char := range adr {
+		if (char == '.') {
+			is_int = false
+		}
+	}
+	if (is_int == true) {
+		index, err := strconv.Atoi(adr)
+		if (err != nil) {
+			fmt.Println("Argument is invalid, try another.")
+			os.Exit(2)
+		}
+		if (index > def.WORKSPACES || index < 1) {
+			fmt.Println("An argument is out of bounds. Please try another number or target IP address.")
+			os.Exit(2)
+		}
+		return def.WORKSPACE[index]
+	} else {
+		return adr
+	}
+}
 
+/*
 func ip_address(adr interface{}) def.IP {
 	switch a := adr.(type) {
 	case def.IP:
@@ -227,6 +257,7 @@ func ip_address(adr interface{}) def.IP {
 		return "0"
 	}
 }
+*/
 
 func get_localip() string {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
