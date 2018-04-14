@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"log"
+	"runtime"
 )
 
 import unsafe "unsafe"
@@ -98,6 +99,7 @@ func (r Remote) Send_ping() {
 }
 
 func (r Remote) remote_listener(add_order chan <- def.Order, ch_ack chan <- bool) {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	laddr, err := net.ResolveUDPAddr("udp", def.PORT[r.id])
 	if err != nil {
 		log.Fatal(err)
@@ -186,11 +188,11 @@ func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
 
 func (r Remote) remote_broadcaster() {
 	fmt.Println("Starting remote bcaster")
-	local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
+	//local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
+	//def.Check(err)
+	target_addr,err := net.ResolveUDPAddr("udp", r.address + def.PORT[r.id])
 	def.Check(err)
-	target_addr,err := net.ResolveUDPAddr("udp", string(r.address) + def.PORT[r.id])
-	def.Check(err)
-	out_connection, err := net.DialUDP("udp", local_addr, target_addr)
+	out_connection, err := net.DialUDP("udp", nil, target_addr)
 	def.Check(err)
 	defer out_connection.Close()
 
