@@ -26,7 +26,6 @@ func Init(remote_address []string) {
 	network.Init(remote_address, &remote)
 	
 	//network.Init(10, 11, &remote)
-	//<- remote[0].Orderchan
 	ch_obstr   	:= make(chan bool)
 
 	ch_stop    	:= make(chan bool, 100)
