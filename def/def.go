@@ -40,9 +40,6 @@ const (
 	FLOORS = 4
 	WORKSPACES = 23
 
-	ADD = true
-	REMOVE = false
-
 	STOP_WEIGHT = 5
 )
 
@@ -57,8 +54,14 @@ type Order struct {
 	Floor int
 	ID int
 	Stamp time.Time
-	Piss int
+	AddOrRemove AoRdecision
 }
+
+type AoRdecision bool //Add or remove decision
+const(
+	ADD = true
+	REMOVE = false
+)
 
 type ButtonType int
 const (

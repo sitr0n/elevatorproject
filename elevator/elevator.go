@@ -41,7 +41,7 @@ func Init(remote_address []string) {
 	go driver.PollStopButton(ch_stop)
 	go Event_manager(ch_floors, &elevator)
 	go driver.PollFloorSensor(ch_floors)
-	go order_queue(ch_add_order, ch_remove_order, ch_buttons)	
+	go order_queue(ch_add_order, ch_remove_order, ch_buttons, &remote)	
 	go driver.PollObstructionSwitch(ch_obstr)
 	go driver.PollStopButton(ch_stop)
 }
@@ -74,7 +74,7 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 			if (event.Button == def.BT_Cab) {
 				Order_state(e, order)
 				add_order <- order
-				Order_accept(e, order, remove_order)
+				Order_accept(e, order, remove_order, remote)
 				fmt.Println("-------------------------------")
 				fmt.Println("Button - Order floor: ", event.Floor)
 				fmt.Println("Button - Elevator stops: ", e.Stops)
@@ -89,13 +89,13 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 				if(decision == true) {
 					Order_state(e, order)
 					add_order <- order 
-					Order_accept(e, order, remove_order) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
+					Order_accept(e, order, remove_order, remote) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
 					network.Send_ack(*remote)
 				} else {
 				
 					order_taken := network.Await_ack(remote)
 					if (order_taken == false) {
-						Order_accept(e, order, remove_order)
+						Order_accept(e, order, remove_order, remote)
 					}
 				}
 			}

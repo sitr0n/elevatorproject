@@ -15,6 +15,7 @@ func button_event_to_order(be def.ButtonEvent) def.Order {
 	order.Floor = be.Floor
 	order.ID = random_generator(10000)
 	order.Stamp = time.Now()
+	order.AddOrRemove = def.ADD
 	switch be.Button {
 		case def.BT_Cab:
 			order.Dir = 0
@@ -47,18 +48,19 @@ func decide_to_take_order(order def.Order, elevator def.Elevator, remote [def.EL
 	return true
 }
 
-func Wait_for_completion(e *def.Elevator, order def.Order, remove_order chan<- def.Order) {
+func Wait_for_completion(e *def.Elevator, order def.Order, remove_order chan<- def.Order, r *[def.ELEVATORS]network.Remote) {
 	for {
 		if (e.CurrentFloor == order.Floor) {
-			fmt.Println("removing order")
+			order.AddOrRemove = def.REMOVE
+			network.Broadcast_order(order, r)
 			remove_order <- order
 			break
 		}
 	}
 }
 
-func Order_accept(e *def.Elevator, order def.Order, remove_order chan def.Order) {
-	go Wait_for_completion(e ,order, remove_order)
+func Order_accept(e *def.Elevator, order def.Order, remove_order chan def.Order, r *[def.ELEVATORS]network.Remote) {
+	go Wait_for_completion(e ,order, remove_order, r)
 	
 }
 
@@ -67,30 +69,31 @@ func Order_state(e *def.Elevator, o def.Order) {
 	//fmt.Println(e.Stops)
 }
 
-func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, ch_buttons chan<- def.ButtonEvent) {
+func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, ch_buttons chan<- def.ButtonEvent, r *[def.ELEVATORS]network.Remote) {
 
 	var q []def.Order
 	
 	for {
 		timecheck_order_queue(q, ch_buttons, ch_remove_order)
-		//fmt.Println(q)
 		select {
-		case newO := <- ch_add_order: //<- remote[0].Orderchan når vi skifter til Hall
+		case newO := <- ch_add_order:
 			q = append(q, newO)
-			fmt.Println("added",newO.ID)
+			fmt.Println("added order ID:",newO.ID)
 
-		/*case newO := <- remote[0].Orderchan:
-			if (newO.AddOrRemove == def.ADD) {
-				
+		case remoteO := <- r[0].Orderchan:
+			if (remoteO.AddOrRemove == def.ADD) {
+				q = append(q, remoteO)
+			} else {
+				ch_remove_order <- remoteO
 			}	
-		*/			
+					
 		case removeO := <- ch_remove_order:
 			i := 0
 			for _,c := range q {
 				if c.ID == removeO.ID {
-					fmt.Println("removing ID:", c.ID)
+					fmt.Println("removing order ID:", c.ID)
 					q = q[:i+copy(q[i:], q[i+1:])]
-					fmt.Println(q)
+					//fmt.Println(q)
 				}
 				i++
 			}			
