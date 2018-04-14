@@ -97,11 +97,15 @@ func (r Remote) Send_ping() {
 }
 
 func (r Remote) remote_listener(add_order chan <- def.Order, ch_ack chan <- bool) {
-	listen_addr, err := net.ResolveUDPAddr("udp", _localip + def.PORT[r.id])
-	def.Check(err)
-	connection, err := net.ListenUDP("udp", listen_addr)
-	def.Check(err)
-	defer connection.Close()
+	laddr, err := net.ResolveUDPAddr("udp", def.PORT[r.id])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	listener, err := net.ListenUDP("udp", laddr)
+	if err != nil {
+		log.Fatal(err)
+	}
 	
 	
 	fmt.Println("Device ", r.id , " connected!\n")
@@ -113,12 +117,13 @@ func (r Remote) remote_listener(add_order chan <- def.Order, ch_ack chan <- bool
 	const ORDER_SIZE = int(unsafe.Sizeof(order))
 	const ACK_SIZE = int(unsafe.Sizeof(ack))
 	wd_kick := make(chan bool)
-	inputBytes := make([]byte, 4096)
+	
 	
 	fmt.Println("Starting remote", r.id, "listener!\n")
 	for {
+		buffer := make([]byte, 1024)
 		fmt.Println("Listening on", listen_addr)
-		length, _, _ := connection.ReadFromUDP(inputBytes)
+		length, _, _ := listener.ReadFromUDP(buffer)
 		wd_kick <- true
 		fmt.Println("Received something!\n\n")
 		if (r.Alive == false) {

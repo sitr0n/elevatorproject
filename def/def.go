@@ -5,8 +5,8 @@ import(
 		"time"
 )
 
-var PORT []string =  []string 	{":10001",
-				 ":10002"}
+var PORT []string =  []string 	{":51299",
+				 ":51300"}
 
 type IP string
 
