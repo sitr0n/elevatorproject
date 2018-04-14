@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"strconv"
+	"log"
 )
 
 import unsafe "unsafe"
@@ -122,7 +123,7 @@ func (r Remote) remote_listener(add_order chan <- def.Order, ch_ack chan <- bool
 	fmt.Println("Starting remote", r.id, "listener!\n")
 	for {
 		buffer := make([]byte, 1024)
-		fmt.Println("Listening on", listen_addr)
+		fmt.Println("Listening on", laddr)
 		length, _, _ := listener.ReadFromUDP(buffer)
 		wd_kick <- true
 		fmt.Println("Received something!\n\n")
@@ -133,7 +134,7 @@ func (r Remote) remote_listener(add_order chan <- def.Order, ch_ack chan <- bool
 		
 		switch length {
 		case ACK_SIZE:
-			err := json.Unmarshal(inputBytes[:length], &ack)
+			err := json.Unmarshal(buffer[:length], &ack)
 			def.Check(err)
 			if (ack == true) {
 				ch_ack <- ack
@@ -141,13 +142,13 @@ func (r Remote) remote_listener(add_order chan <- def.Order, ch_ack chan <- bool
 			break
 			
 		case ORDER_SIZE: 
-			err := json.Unmarshal(inputBytes[:length], &order)
+			err := json.Unmarshal(buffer[:length], &order)
 			def.Check(err)
 			add_order <- order
 			break
 			
 		case STATE_SIZE:
-			err := json.Unmarshal(inputBytes[:length], &elevator)
+			err := json.Unmarshal(buffer[:length], &elevator)
 			def.Check(err)
 			
 			r.State = elevator
