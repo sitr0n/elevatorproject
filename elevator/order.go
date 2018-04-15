@@ -59,12 +59,12 @@ func Wait_for_completion(e *def.Elevator, order def.Order, remove_order chan<- d
 	}
 }
 
-func Order_accept(e *def.Elevator, order def.Order, remove_order chan def.Order, r *[def.ELEVATORS]network.Remote) {
+func Order_undergoing(e *def.Elevator, order def.Order, remove_order chan<- def.Order, r *[def.ELEVATORS]network.Remote) {
 	go Wait_for_completion(e ,order, remove_order, r)
 	
 }
 
-func Order_state(e *def.Elevator, o def.Order) {
+func Order_accept(e *def.Elevator, o def.Order) {
 	e.Stops[o.Floor] = 1
 	//fmt.Println(e.Stops)
 }
@@ -79,14 +79,14 @@ func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, 
 		case newO := <- ch_add_order:
 			q = append(q, newO)
 			fmt.Println("added order ID:",newO.ID)
-
+		/*
 		case remoteO := <- r[0].Orderchan:
 			if (remoteO.AddOrRemove == def.ADD) {
 				q = append(q, remoteO)
 			} else {
 				ch_remove_order <- remoteO
 			}	
-					
+		*/			
 		case removeO := <- ch_remove_order:
 			i := 0
 			for _,c := range q {
@@ -99,6 +99,49 @@ func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, 
 			}			
 		}
 	}
+}
+
+func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Order, ch_remove_order chan<- def.Order, e *def.Elevator) { //listener
+	for {
+		select {
+		case order := <- r[0].Orderchan:
+			if order.AddOrRemove == def.REMOVE {
+				ch_remove_order <- order
+			} else {
+				decision := decide_to_take_order(order, *e, *r)
+				if(decision == true) {
+					Order_accept(e, order)
+					ch_add_order <- order 
+					Order_undergoing(e, order, ch_remove_order, r) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
+					network.Send_ack(*r)
+				} else {
+			
+					order_taken := network.Await_ack(r)
+					if (order_taken == false) {
+						Order_undergoing(e, order, ch_remove_order, r)
+					}
+				}
+			}
+		case order := <- r[1].Orderchan:
+			if order.AddOrRemove == def.REMOVE {
+				ch_remove_order <- order
+			} else {
+				ch_add_order <- order 
+				decision := decide_to_take_order(order, *e, *r)
+				if(decision == true) {
+					Order_accept(e, order)
+					Order_undergoing(e, order, ch_remove_order, r) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
+					network.Send_ack(*r)
+				} else {
+					
+					order_taken := network.Await_ack(r)
+					if (order_taken == false) {
+						Order_accept(e, order)
+					}
+				}
+			}
+		}
+	}	
 }
 
 func timecheck_order_queue(q []def.Order, ch_buttons chan<- def.ButtonEvent, ch_remove_order chan<- def.Order) {

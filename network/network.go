@@ -194,7 +194,7 @@ func (r *Remote) remote_broadcaster() {
 			def.Check(err)
 			
 			out_connection.Write(encoded)
-			fmt.Println("Wrote: ", msg, "to", r.address + def.PORT[r.id])
+			//fmt.Println("Wrote: ", msg, "to", r.address + def.PORT[r.id])
 		}
 	}
 }
