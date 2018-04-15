@@ -111,7 +111,6 @@ func (r *Remote) remote_listener() {
 	var order def.Order
 	var ack bool = false
 	const STATE_SIZE = 44
-	const ORDER_SIZE = 555
 	const ACK_SIZE = 4
 	const PING_SIZE = 5
 	
@@ -137,12 +136,6 @@ func (r *Remote) remote_listener() {
 		case PING_SIZE:
 			break
 			
-		case ORDER_SIZE: 
-			err := json.Unmarshal(buffer[:length], &order)
-			def.Check(err)
-			r.Orderchan <- order
-			break
-			
 		case STATE_SIZE:
 			err := json.Unmarshal(buffer[:length], &elevator)
 			def.Check(err)
@@ -153,8 +146,9 @@ func (r *Remote) remote_listener() {
 			break
 		
 		default:
-			fmt.Println("Oops! Received something unexpected from remote", r.id)
-			fmt.Println("\n-Size:", length, "\n-Expected:", STATE_SIZE)
+			err := json.Unmarshal(buffer[:length], &order)
+			def.Check(err)
+			r.Orderchan <- order
 		}
 	}
 }
