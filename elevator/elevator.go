@@ -91,22 +91,21 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 					Order_undergoing(e, order, remove_order, remote) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
 					network.Send_ack(*remote)
 					if (e.Dir == def.MD_Stop) {
-					move_to_next_floor(e)
-				}
+						move_to_next_floor(e)
+					}
 				} else {
 					order_taken := remote[taker].Await_ack()
 					if (order_taken == false) {
 						Order_accept(e, order)
 						if (e.Dir == def.MD_Stop) {
-					move_to_next_floor(e)
-				}
+							move_to_next_floor(e)
+						}
 					}
 				}
 			}
 			Save_state(e)
 
-			remote[0].Send_state(*e)
-			remote[1].Send_state(*e)
+			network.Send_state_to_all(*e, remote)
 		/*
 
 		case stop := <- s:
