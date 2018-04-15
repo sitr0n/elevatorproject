@@ -84,7 +84,7 @@ func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, 
 	var q []def.Order
 	
 	for {
-		timecheck_order_queue(q, ch_buttons, ch_remove_order)
+		
 		select {
 		case newO := <- ch_add_order:
 			q = append(q, newO)
@@ -106,7 +106,9 @@ func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, 
 					//fmt.Println(q)
 				}
 				i++
-			}			
+			}
+		default:
+			timecheck_order_queue(q, ch_buttons, ch_remove_order)			
 		}
 	}
 }
@@ -154,7 +156,8 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 
 func timecheck_order_queue(q []def.Order, ch_buttons chan<- def.ButtonEvent, ch_remove_order chan<- def.Order) {
 	for _, c := range q {
-		if time.Now().Sub(c.Stamp) > 30*time.Second {
+		//time.Sleep(time.Second)
+		if time.Now().Sub(c.Stamp) > 5*time.Second {
 			fmt.Println(c.ID," failed")
 			newEvent :=  def.ButtonEvent{Floor: c.Floor, Button: def.BT_Cab}
 			ch_buttons <- newEvent
