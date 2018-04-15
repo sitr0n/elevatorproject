@@ -88,7 +88,19 @@ func (r *Remote) Send_order(order def.Order) {
 }
 
 func (r *Remote) Send_state(state def.Elevator) {
-	r.send <- state
+	for {
+		r.send <- state
+		received := r.Await_ack()
+		if (received == true || r.Alive == false) {
+			break
+		}
+	}
+}
+
+func Send_state_to_all(e def.Elevator, r *[def.ELEVATORS]Remote) {
+	for i := 0; i < def.ELEVATORS; i++ {
+		go r[i].Send_state(e)
+	}
 }
 
 func (r *Remote) Send_ack() {
