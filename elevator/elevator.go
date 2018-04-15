@@ -25,14 +25,14 @@ func Init(remote_address []string) {
 	var remote [def.ELEVATORS]network.Remote
 	network.Init(remote_address, &remote)
 	
-	ch_obstr   	:= make(chan bool)
+	ch_obstr   	:= make(chan bool, 100)
 
 	ch_stop    	:= make(chan bool, 100)
 
-	ch_buttons := make(chan def.ButtonEvent)
-	ch_floors  := make(chan int)
-	ch_add_order := make(chan def.Order)
-	ch_remove_order := make(chan def.Order)
+	ch_buttons := make(chan def.ButtonEvent, 100)
+	ch_floors  := make(chan int, 100)
+	ch_add_order := make(chan def.Order, 100)
+	ch_remove_order := make(chan def.Order, 100)
 
 	go Button_manager(ch_buttons, &elevator, &remote,/* ch_stop,*/ ch_add_order, ch_remove_order)
 	go driver.PollButtons(ch_buttons)
@@ -90,10 +90,16 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 					add_order <- order 
 					Order_undergoing(e, order, remove_order, remote) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
 					network.Send_ack(*remote)
+					if (e.Dir == def.MD_Stop) {
+					move_to_next_floor(e)
+				}
 				} else {
 					order_taken := remote[taker].Await_ack()
 					if (order_taken == false) {
 						Order_accept(e, order)
+						if (e.Dir == def.MD_Stop) {
+					move_to_next_floor(e)
+				}
 					}
 				}
 			}
