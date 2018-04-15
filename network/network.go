@@ -5,45 +5,102 @@ import (
 	"net"
 	"time"
 	"encoding/json"
+	"os"
+	"strconv"
+	//"log"
+	//"runtime"
 )
 
-import unsafe "unsafe"
+//import unsafe "unsafe"
 import def "../def"
 
 
 type Remote struct {
 	id		int
-	input		*net.UDPConn
-	output 		*net.UDPConn
-	address  	def.IP
-	alive 		bool
-	Send		chan interface{}
-	Receive		chan interface{}
+	address  	string
+	Alive 		bool
+	send		chan interface{}
+	Orderchan	chan def.Order
+	Ackchan		chan bool
 	State 		def.Elevator
 }
 
 var _localip string
 
-func Init(first_remote interface{}, second_remote interface{}, r *[def.ELEVATORS]Remote, ch_order chan <- def.Order, ch_ack chan <- bool) {
+func Init(remote_address []string, r *[def.ELEVATORS]Remote) {
 	_localip = get_localip()
-	r[0].address = ip_address(first_remote)
-	r[1].address = ip_address(second_remote)
+
+	ch_ack := make(chan bool)
+	ch_order := make(chan def.Order)
+	
 	for i := 0; i < def.ELEVATORS; i++ {
+		r[i].address = ip_address(remote_address[i])
 		r[i].id = i
-		r[i].alive = false
-		r[i].Send = make(chan interface{})
-		r[i].Receive = make(chan interface{})
+		r[i].Alive = false
+		r[i].send = make(chan interface{})
+		r[i].Orderchan = ch_order
+		r[i].Ackchan = ch_ack
 		
-		connect_remote(&r[i])
-		
-		go r[i].remote_listener(ch_order, ch_ack)
-		go remote_broadcaster(r[i].output, r[i].Send)
+		go r[i].remote_listener()
+		go r[i].remote_broadcaster()
 	}
+	go send_ping(r)
 }
 
 
+func Await_ack(remote *[def.ELEVATORS]Remote) bool {
+	timeout := make(chan bool)
+	timer_cancel := make(chan bool)
+	go timeout_timer(timer_cancel, timeout)
+	select {
+	case <- remote[0].Ackchan:
+		timer_cancel <- true
+		return true
+	
+	case <- timeout:
+		return false
+	}
+}
 
-func (r Remote) remote_listener(ch_order chan <- def.Order, ch_ack chan <- bool) {
+func Broadcast_state(r *[def.ELEVATORS]Remote) {
+	for i := 0; i < def.ELEVATORS; i++ {
+		r[i].send <- r[i].State
+	}
+}
+
+func Broadcast_order(order def.Order, r *[def.ELEVATORS]Remote) {
+	for i := 0; i < def.ELEVATORS; i++ {
+		r[i].send <- order
+	}
+}
+
+func (r *Remote) Get_state() def.Elevator {
+	return r.State
+}
+
+func (r *Remote) Send_order(order def.Order) {
+	r.send <- order
+}
+
+func (r *Remote) Send_state() {
+	r.send <- r.State
+}
+
+func Send_ack(r [def.ELEVATORS]Remote) {
+	for i := 0; i < def.ELEVATORS; i++ {
+		r[i].send <- true
+	}
+}
+
+func (r *Remote) Send_ping() {
+	r.send <- false
+}
+
+func (r *Remote) Set_alive(a bool) {
+	r.Alive = a
+}
+
+func (r *Remote) remote_listener() {
 	listen_addr, err := net.ResolveUDPAddr("udp", _localip + def.PORT[r.id])
 	def.Check(err)
 	in_connection, err := net.ListenUDP("udp", listen_addr)
@@ -53,17 +110,18 @@ func (r Remote) remote_listener(ch_order chan <- def.Order, ch_ack chan <- bool)
 	var elevator def.Elevator
 	var order def.Order
 	var ack bool = false
-	const STATE_SIZE = int(unsafe.Sizeof(elevator))
-	const ORDER_SIZE = int(unsafe.Sizeof(order))
-	const ACK_SIZE = int(unsafe.Sizeof(ack))
+	const STATE_SIZE = 44
+	const ORDER_SIZE = 555
+	const ACK_SIZE = 4
+	const PING_SIZE = 5
 	
-	wd_kick := make(chan bool)
-	inputBytes := make([]byte, 4096)
+	wd_kick := make(chan bool, 100)
 	
-	fmt.Println("Starting remote", r.id, "listener!")
+	fmt.Println("Starting remote", r.id, "listener!\n")
 	for {
-		length, _, _ := r.input.ReadFromUDP(inputBytes)
-		if (r.alive == false) {
+		buffer := make([]byte, 1024)
+		length, _, _ := in_connection.ReadFromUDP(buffer)
+		if (r.Alive == false) {
 			go r.watchdog(wd_kick)
 			fmt.Println("Connection with remote", r.id, "established!")
 		}
@@ -71,72 +129,130 @@ func (r Remote) remote_listener(ch_order chan <- def.Order, ch_ack chan <- bool)
 		
 		switch length {
 		case ACK_SIZE:
-			err := json.Unmarshal(inputBytes[:length], &ack)
+			err := json.Unmarshal(buffer[:length], &ack)
 			def.Check(err)
-			ch_ack <- ack
+			r.Ackchan <- true
+			break
+			
+		case PING_SIZE:
 			break
 			
 		case ORDER_SIZE: 
-			err := json.Unmarshal(inputBytes[:length], &order)
+			err := json.Unmarshal(buffer[:length], &order)
 			def.Check(err)
-			ch_order <- order
+			r.Orderchan <- order
 			break
 			
 		case STATE_SIZE:
-			err := json.Unmarshal(inputBytes[:length], &elevator)
+			err := json.Unmarshal(buffer[:length], &elevator)
 			def.Check(err)
 			
 			r.State = elevator
-			//ch_state <- state
+			
+			fmt.Println("STATE: ", r.State)
 			break
 		
 		default:
 			fmt.Println("Oops! Received something unexpected from remote", r.id)
+			fmt.Println("\n-Size:", length, "\n-Expected:", STATE_SIZE)
 		}
 	}
 }
 
-func remote_broadcaster(connection *net.UDPConn, message <- chan interface{}) {
+func send_ping(remote *[def.ELEVATORS]Remote) {
+	for {
+		time.Sleep(time.Second)
+		for i := 0; i < def.ELEVATORS; i++ {
+			remote[i].send <- false
+		}
+	}
+}
+
+func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
+	for i := 0; i < 10; i++ {
+		time.Sleep(500*time.Millisecond)
+		select {
+		case <- cancel:
+			return
+
+		default:
+		}
+	}
+	timeout <- true
+}
+
+
+func (r *Remote) remote_broadcaster() {
 	fmt.Println("Starting remote bcaster")
+	//local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
+	//def.Check(err)
+	target_addr,err := net.ResolveUDPAddr("udp", r.address + def.PORT[r.id])
+	def.Check(err)
+	out_connection, err := net.DialUDP("udp", nil, target_addr)
+	def.Check(err)
+	defer out_connection.Close()
+
+
 	for {
 		select {
-		case msg := <- message:
+		case msg := <- r.send:
 			encoded, err := json.Marshal(msg)
 			def.Check(err)
 			
-			connection.Write(encoded)
-			fmt.Println("Wrote: ", msg)
+			out_connection.Write(encoded)
+			fmt.Println("Wrote: ", msg, "to", r.address + def.PORT[r.id])
 		}
 	}
 }
 
-func (r Remote) watchdog(kick <- chan bool) {
-	r.alive = true
+func flush_channel(c <- chan interface{}) {
+	for i := 0; i < 100; i++ {
+		select {
+		case <- c:
+		default:
+		}
+	}
+}
+
+func (r *Remote) watchdog(kick <- chan bool) {
+	r.Set_alive(true)
+	fmt.Println("Watchdog is UP")
 	for i := 0; i < 10; i++ {
-		time.Sleep(50*time.Millisecond)
+		time.Sleep(5000*time.Millisecond)
 		select {
 		case <- kick:
 			i = 0
 		default:
 		}
 	}
-	r.alive = false
+	r.Set_alive(false)
+	fmt.Println("Connection with remote", r.id, "lost.")
 }
 
-func connect_remote(r *Remote) {
-	
-	
-	local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
-	def.Check(err)
-	target_addr,err := net.ResolveUDPAddr("udp", string(r.address) + def.PORT[r.id])
-	def.Check(err)
-	out_connection, err := net.DialUDP("udp", local_addr, target_addr)
-	def.Check(err)
-	defer out_connection.Close()
-	
+func ip_address(adr string) string {
+	var is_int = true
+	for _, char := range adr {
+		if (char == '.') {
+			is_int = false
+		}
+	}
+	if (is_int == true) {
+		index, err := strconv.Atoi(adr)
+		if (err != nil) {
+			fmt.Println("Argument is invalid, try another.")
+			os.Exit(2)
+		}
+		if (index > def.WORKSPACES || index < 1) {
+			fmt.Println("An argument is out of bounds. Please try another number or target IP address.")
+			os.Exit(2)
+		}
+		return def.WORKSPACE[index]
+	} else {
+		return adr
+	}
 }
 
-
+/*
 func ip_address(adr interface{}) def.IP {
 	switch a := adr.(type) {
 	case def.IP:
@@ -154,6 +270,7 @@ func ip_address(adr interface{}) def.IP {
 		return "0"
 	}
 }
+*/
 
 func get_localip() string {
 	conn, err := net.Dial("udp", "8.8.8.8:80")

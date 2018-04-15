@@ -4,7 +4,9 @@ import ("fmt"
 	"encoding/json"
 	"io/ioutil"
 	"time"
-	"math/rand"
+	//"math/rand"
+	"os"
+	"os/exec"
 )
 
 import driver "../driver"
@@ -12,60 +14,65 @@ import network "../network"
 import def "../def"
 
 
+func Init(remote_address []string) {
+	check_remote_address(remote_address)
+	start_elevator_server()
 
-func Init() {
 	var elevator = def.Elevator{}
 	Load_state(&elevator)
 	driver.Init("localhost:15657", def.FLOORS)
 	
 	var remote [def.ELEVATORS]network.Remote
-	ch_ack 		:= make(chan bool)
-	ch_order 	:= make(chan def.Order)
+	network.Init(remote_address, &remote)
+	
 	ch_obstr   	:= make(chan bool)
-	ch_stop    	:= make(chan bool)
-	
-	network.Init(10, 11, &remote, ch_order, ch_ack)
-	
+
+	ch_stop    	:= make(chan bool, 100)
+
 	ch_buttons := make(chan def.ButtonEvent)
-	go Button_manager(ch_buttons, &elevator, &remote)
-	//go driver.PollButtons(ch_buttons)
-	
 	ch_floors  := make(chan int)
-	go Event_manager(ch_floors, &elevator)
+	ch_add_order := make(chan def.Order)
+	ch_remove_order := make(chan def.Order)
+
+	go Button_manager(ch_buttons, &elevator, &remote, ch_stop, ch_add_order, ch_remove_order)
+	go driver.PollButtons(ch_buttons)
+	go driver.PollStopButton(ch_stop)
+	go Event_manager(ch_floors, &elevator, &remote)
 	go driver.PollFloorSensor(ch_floors)
-	
-		
+	go order_queue(ch_add_order, ch_remove_order, ch_buttons, &remote)	
 	go driver.PollObstructionSwitch(ch_obstr)
 	go driver.PollStopButton(ch_stop)
-
-
-	time.Sleep(1*time.Second)
-
-	remote[0].Send <- "wopwop"
-	fmt.Println(remote[0])
 }
 
-func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
-	for i := 0; i < 10; i++ {
-		time.Sleep(500*time.Millisecond)
-		select {
-		case <- cancel:
-			return
+func start_elevator_server() {
+	ElevatorServer := exec.Command("gnome-terminal", "-x", "sh", "-c", "ElevatorServer;")
+	err := ElevatorServer.Start()
+	def.Check(err)
+	time.Sleep(500*time.Millisecond)
+}
 
-		default:
-		}
+func check_remote_address(arg []string) {
+	array_length := len(arg)
+	if (array_length != def.ELEVATORS) {
+		fmt.Println("Expecting", def.ELEVATORS, "arguments.")
+		fmt.Println("Enter remote elevator IP address(es) or workstation number(s).")
+		os.Exit(0)
 	}
-	timeout <- true
+
 }
 
-func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote) {
+
+
+func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote, s <-chan bool, add_order chan<- def.Order, remove_order chan def.Order) {
+
 	for {
 		select {
 		case event := <- b:
 			order := button_event_to_order(event)
 			if (event.Button == def.BT_Cab) {
-				Order_accept(e, order)
-				
+				Order_state(e, order)
+				add_order <- order
+				Order_accept(e, order, remove_order, remote)
 				fmt.Println("-------------------------------")
 				fmt.Println("Button - Order floor: ", event.Floor)
 				fmt.Println("Button - Elevator stops: ", e.Stops)
@@ -74,56 +81,46 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 					move_to_next_floor(e)
 				}
 			} else { 
-				for i := 0; i < def.ELEVATORS; i++ {
-					remote[i].Send <- order
-				}
+				network.Broadcast_order(order, remote)
 				
-				//local_cost := Evaluate(*e, order)
+				decision := decide_to_take_order(order, *e, *remote)
+				if(decision == true) {
+					Order_state(e, order)
+					add_order <- order 
+					Order_accept(e, order, remove_order, remote) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
+					network.Send_ack(*remote)
+				} else {
 				
-				//cost1 := Evaluate(remote[0].State, order)
-				//cost2 := Evaluate(remote[1].State, order)
-				
-			
-				
-			        //network.broadcast_state()
-			        //poll states
-			        //time.Sleep(100*Millisecond)
-				/*
-			        Choose_elevator()
-				
-				if (network.is_Alive)
-					wd_timeout := make(chan bool)
-					wd_cancel := make(chan bool)
-					ack_1 := make(chan bool)
-					ack_2 := make(chan bool)
-					
-					Activate_timeout(ch_cancel, ch_timeout)
-					network.Ack_listener1(ack1)
-					netowrk.Ack_listener2(ack2)
-					select {
-					case <- ack_1:
-						wd_cancel <- true
-						break
-					case <- ack_2:
-						wd_cancel <- true
-						break
-					case <- wd_timeout
-						Order_accept(e, order)
+					order_taken := network.Await_ack(remote)
+					if (order_taken == false) {
+						Order_accept(e, order, remove_order, remote)
 					}
-				else {
-					Order_accept(e, order)
 				}
-				*/
-				//TODO: Broadcast corresponding order
-				//TODO: Evaluate all elevators and decide which one taking the order
-				//TODO: Update corresponding elevator struct -> Stops[event.Floor]
 			}
 			Save_state(e)
+			remote[0].Send_state()
+			remote[1].Send_state()
+		
+		case stop := <- s:
+			//var prevDir def.MotorDirection
+			time.Sleep(time.Second)
+			if stop == true {
+				//prevDir = e.Dir
+				//e.Dir = def.MD_Stop
+				fmt.Println("stopping is true")
+				//time.Sleep(20 * time.Millisecond)
+				
+			} else {
+				//e.Dir = prevDir
+				fmt.Println("stopping is false")
+				//time.Sleep(20 * time.Millisecond)
+			}
+			
 		}
 	}
 }
 
-func Event_manager(f <- chan int, ep *def.Elevator) {
+func Event_manager(f <- chan int, ep *def.Elevator, remote *[def.ELEVATORS]network.Remote) {
 	prev_floor := -1
 	for {
 		select {
@@ -133,20 +130,26 @@ func Event_manager(f <- chan int, ep *def.Elevator) {
 				ep.CurrentFloor = floor
 				fmt.Println("Current floor: ", ep.CurrentFloor)
 				if (ep.Stops[floor] > 0) {
-					fmt.Println("Stopping at floor ", floor)
-					driver.SetMotorDirection(def.MD_Stop)
-					driver.SetDoorOpenLamp(true)
 					ep.Stops[floor] = 0
-					// fmt.Println("Elevator stops: ", ep.Stops)
-					time.Sleep(5*time.Second)
-					driver.SetDoorOpenLamp(false)
+					open_door()
+					
 				}
 				move_to_next_floor(ep)
 			}
 			Save_state(ep)
 			prev_floor = floor
+
+		
 		}
 	}
+}
+
+func open_door() {
+	//fmt.Println("Stopping at floor ", floor)
+	driver.SetMotorDirection(def.MD_Stop)
+	driver.SetDoorOpenLamp(true)
+	time.Sleep(5*time.Second)
+	driver.SetDoorOpenLamp(false)
 }
 
 func Find_next_stop(e *def.Elevator) def.MotorDirection {
@@ -223,35 +226,9 @@ func LoadState_test(state *def.Elevator) {
 	def.Check(err)
 }
 
-func Order_complete(e *def.Elevator) {
-	e.Stops[e.CurrentFloor] = 0
-	//fmt.Println(e.Stops)
-}
 
-func Order_accept(e *def.Elevator, o def.Order) {
-	e.Stops[o.Floor] = 1
-	//fmt.Println(e.Stops)
-}
 
-func button_event_to_order(be def.ButtonEvent) def.Order {
-	var order = def.Order{}
-	order.Floor = be.Floor
-	order.ID = random_generator(10000)
-	order.Stamp = time.Now()
-	switch be.Button {
-		case def.BT_Cab:
-			order.Dir = 0
-			return order
-		case def.BT_HallUp:
-			order.Dir = def.MD_Up
-			return order
-		case def.BT_HallDown:
-			order.Dir = def.MD_Down
-			return order
-		default:
-			return order
-	}
-}
+
 
 func Evaluate(e def.Elevator, o def.Order) int {
 	value := 0
@@ -304,43 +281,5 @@ func Evaluate(e def.Elevator, o def.Order) int {
 	return value
 }
 
-func Order_queue(ch_add_order <-chan def.Order, ch_remove_order <-chan def.Order) {
 
-	var q []def.Order
-	
-	for {
-		timecheck_order_queue(q)
-		select {
-		case newQ := <- ch_add_order:
-			q = append(q, newQ)
-			fmt.Println("added",newQ.ID)
-			
-		case removeQ := <- ch_remove_order:
-			i := 0
-			for _,c := range q {
-				if c.ID == removeQ.ID {
-					fmt.Println("removing ID:", c.ID)
-					q = q[:i+copy(q[i:], q[i+1:])]
-					fmt.Println(q)
-				}
-				i++
-			}			
-		}
-	}
-}
 
-func timecheck_order_queue(q []def.Order) {
-	for _, c := range q {
-		if time.Now().Sub(c.Stamp) > 30*time.Second {
-			fmt.Println(c.ID," failed")
-			//TODO: Force other elevators to take order
-		}
-	}
-}
-
-func random_generator(size int) int {
-	nanotime := rand.NewSource(time.Now().UnixNano())
-	convert := rand.New(nanotime)
-	random := convert.Intn(size) 
-	return random
-}

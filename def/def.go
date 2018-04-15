@@ -5,18 +5,19 @@ import(
 		"time"
 )
 
-var PORT []string =  []string 	{":10001",
-				 ":10002"}
+var PORT []string =  []string 	{":51299",
+				 ":51300"}
 
 type IP string
-var WORKSPACE []IP = []IP	 {"0",
+
+var WORKSPACE []string = []string {"0",
+				  "129.241.187.140",
 				  "0",
-				  "0",
-				  "0",
-				  "0",
-				  "0",
-				  "0",
-				  "0",
+				  "129.241.187.150",
+				  "129.241.187.141",
+				  "129.241.187.143",
+				  "129.241.187.146",
+				  "129.241.187.154",
 				  "0",
 				  "0",
 				  "129.241.187.158",
@@ -37,7 +38,8 @@ var WORKSPACE []IP = []IP	 {"0",
 const (
 	ELEVATORS = 2
 	FLOORS = 4
-	
+	WORKSPACES = 23
+
 	STOP_WEIGHT = 5
 )
 
@@ -52,8 +54,14 @@ type Order struct {
 	Floor int
 	ID int
 	Stamp time.Time
-	Piss int
+	AddOrRemove AoRdecision
 }
+
+type AoRdecision bool //Add or remove decision
+const(
+	ADD = true
+	REMOVE = false
+)
 
 type ButtonType int
 const (
