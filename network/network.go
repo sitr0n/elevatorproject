@@ -14,6 +14,12 @@ import (
 //import unsafe "unsafe"
 import def "../def"
 
+const(
+	PING = false
+	ACK = true
+
+	PING_INTERVAL = 1000
+)
 
 type Remote struct {
 	id		int
@@ -30,30 +36,29 @@ var _localip string
 func Init(remote_address []string, r *[def.ELEVATORS]Remote) {
 	_localip = get_localip()
 
-	ch_ack := make(chan bool)
-	ch_order := make(chan def.Order)
+	ch_order := make(chan def.Order, 1080)
 	
 	for i := 0; i < def.ELEVATORS; i++ {
 		r[i].address = ip_address(remote_address[i])
 		r[i].id = i
 		r[i].Alive = false
-		r[i].send = make(chan interface{})
+		r[i].send = make(chan interface{}, 1080)
 		r[i].Orderchan = ch_order
-		r[i].Ackchan = ch_ack
+		r[i].Ackchan = make(chan bool, 1080)
 		
 		go r[i].remote_listener()
 		go r[i].remote_broadcaster()
 	}
-	go send_ping(r)
+	go ping_remotes(r, PING_INTERVAL)
 }
 
 
-func Await_ack(remote *[def.ELEVATORS]Remote) bool {
+func (r *Remote) Await_ack() bool {
 	timeout := make(chan bool)
 	timer_cancel := make(chan bool)
 	go timeout_timer(timer_cancel, timeout)
 	select {
-	case <- remote[0].Ackchan:
+	case <- r.Ackchan:
 		timer_cancel <- true
 		return true
 	
@@ -82,18 +87,18 @@ func (r *Remote) Send_order(order def.Order) {
 	r.send <- order
 }
 
-func (r *Remote) Send_state() {
-	r.send <- r.State
+func (r *Remote) Send_state(state def.Elevator) {
+	r.send <- state
+}
+
+func (r *Remote) Send_ack() {
+	r.send <- true
 }
 
 func Send_ack(r [def.ELEVATORS]Remote) {
 	for i := 0; i < def.ELEVATORS; i++ {
 		r[i].send <- true
 	}
-}
-
-func (r *Remote) Send_ping() {
-	r.send <- false
 }
 
 func (r *Remote) Set_alive(a bool) {
@@ -141,8 +146,9 @@ func (r *Remote) remote_listener() {
 			def.Check(err)
 			
 			r.State = elevator
-			
-			fmt.Println("STATE: ", r.State)
+			r.Send_ack()
+
+			fmt.Println("Remote", r.id, "state changed to:", r.State)
 			break
 		
 		default:
@@ -153,11 +159,11 @@ func (r *Remote) remote_listener() {
 	}
 }
 
-func send_ping(remote *[def.ELEVATORS]Remote) {
+func ping_remotes(remote *[def.ELEVATORS]Remote, period int) {
 	for {
-		time.Sleep(time.Second)
+		time.Sleep(time.Duration(period)*time.Millisecond)
 		for i := 0; i < def.ELEVATORS; i++ {
-			remote[i].send <- false
+			remote[i].send <- PING
 		}
 	}
 }
@@ -194,7 +200,7 @@ func (r *Remote) remote_broadcaster() {
 			def.Check(err)
 			
 			out_connection.Write(encoded)
-			fmt.Println("Wrote: ", msg, "to", r.address + def.PORT[r.id])
+			//fmt.Println("Wrote: ", msg, "to", r.address + def.PORT[r.id])
 		}
 	}
 }
@@ -210,7 +216,6 @@ func flush_channel(c <- chan interface{}) {
 
 func (r *Remote) watchdog(kick <- chan bool) {
 	r.Set_alive(true)
-	fmt.Println("Watchdog is UP")
 	for i := 0; i < 10; i++ {
 		time.Sleep(5000*time.Millisecond)
 		select {
