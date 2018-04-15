@@ -36,31 +36,38 @@ func Init(first_remote interface{}, second_remote interface{}, r *[def.ELEVATORS
 		
 		connect_remote(&r[i])
 		
-		go remote_listener(&r[i], ch_order, ch_ack)
+		go r[i].remote_listener(ch_order, ch_ack)
 		go remote_broadcaster(r[i].output, r[i].Send)
 	}
 }
 
 
 
-func remote_listener(r *Remote, ch_order chan <- def.Order, ch_ack chan <- bool) {
+func (r Remote) remote_listener(ch_order chan <- def.Order, ch_ack chan <- bool) {
+	listen_addr, err := net.ResolveUDPAddr("udp", _localip + def.PORT[r.id])
+	def.Check(err)
+	in_connection, err := net.ListenUDP("udp", listen_addr)
+	def.Check(err)
+	defer in_connection.Close()
+	
 	var elevator def.Elevator
 	var order def.Order
 	var ack bool = false
 	const STATE_SIZE = int(unsafe.Sizeof(elevator))
 	const ORDER_SIZE = int(unsafe.Sizeof(order))
 	const ACK_SIZE = int(unsafe.Sizeof(ack))
+	
 	wd_kick := make(chan bool)
 	inputBytes := make([]byte, 4096)
 	
 	fmt.Println("Starting remote", r.id, "listener!")
 	for {
 		length, _, _ := r.input.ReadFromUDP(inputBytes)
-		wd_kick <- true
 		if (r.alive == false) {
-			go watchdog(r, wd_kick)
-			fmt.Println("Connection established!")
+			go r.watchdog(wd_kick)
+			fmt.Println("Connection with remote", r.id, "established!")
 		}
+		wd_kick <- true
 		
 		switch length {
 		case ACK_SIZE:
@@ -84,7 +91,7 @@ func remote_listener(r *Remote, ch_order chan <- def.Order, ch_ack chan <- bool)
 			break
 		
 		default:
-			fmt.Println("Oops! Received something unexpected from remote...")
+			fmt.Println("Oops! Received something unexpected from remote", r.id)
 		}
 	}
 }
@@ -103,7 +110,7 @@ func remote_broadcaster(connection *net.UDPConn, message <- chan interface{}) {
 	}
 }
 
-func watchdog(r *Remote, kick <- chan bool) {
+func (r Remote) watchdog(kick <- chan bool) {
 	r.alive = true
 	for i := 0; i < 10; i++ {
 		time.Sleep(50*time.Millisecond)
@@ -117,11 +124,7 @@ func watchdog(r *Remote, kick <- chan bool) {
 }
 
 func connect_remote(r *Remote) {
-	listen_addr, err := net.ResolveUDPAddr("udp", _localip + def.PORT[r.id])
-	def.Check(err)
-	in_connection, _ := net.ListenUDP("udp", listen_addr)
-	def.Check(err)
-	defer in_connection.Close()
+	
 	
 	local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
 	def.Check(err)
@@ -131,9 +134,6 @@ func connect_remote(r *Remote) {
 	def.Check(err)
 	defer out_connection.Close()
 	
-	r.input = in_connection
-	r.output = out_connection
-	fmt.Println("Device ", r.id , " connected!")
 }
 
 
