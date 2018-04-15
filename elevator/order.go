@@ -31,21 +31,31 @@ func button_event_to_order(be def.ButtonEvent) def.Order {
 	}
 }
 
-func decide_to_take_order(order def.Order, elevator def.Elevator, remote [def.ELEVATORS]network.Remote) bool {
-	
-        local_cost := Evaluate(elevator, order)
-        
-        remote1_cost := Evaluate(remote[0].State, order)
-        remote2_cost := Evaluate(remote[1].State, order)
-        
-        if (remote[0].Alive && (local_cost > remote1_cost)) {
-        	return false
-        }
-        
-        if (remote[1].Alive && (local_cost > remote2_cost)) {
-        	return false
-        }
-	return true
+func delegate_order(order def.Order, elevator def.Elevator, remote [def.ELEVATORS]network.Remote) int {
+	var taker int = 0
+
+	local_cost := Evaluate(elevator, order)
+	var cost [def.ELEVATORS]int = [def.ELEVATORS]int{}
+
+	var FIRST_SCAN bool = true
+	for i := 0; i < def.ELEVATORS; i++ {
+		cost[i] = Evaluate(remote[i].Get_state(), order)
+		if (remote[i].Alive == false) {
+			cost[i] = 999
+		}
+		if (FIRST_SCAN) {
+			taker = i
+			FIRST_SCAN = false
+		}
+		if (cost[i] < cost[taker]) {
+			taker = i
+		}
+	}
+
+	if (local_cost < cost[taker]) {
+		return -1
+	}
+	return taker
 }
 
 func Wait_for_completion(e *def.Elevator, order def.Order, remove_order chan<- def.Order, r *[def.ELEVATORS]network.Remote) {
@@ -108,17 +118,16 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 			if order.AddOrRemove == def.REMOVE {
 				ch_remove_order <- order
 			} else {
-				decision := decide_to_take_order(order, *e, *r)
-				if(decision == true) {
-					Order_accept(e, order)
-					ch_add_order <- order 
+				taker := delegate_order(order, *e, *r)
+				ch_add_order <- order
+				if(taker == -1) {
+					Order_accept(e, order) 
 					Order_undergoing(e, order, ch_remove_order, r) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
 					network.Send_ack(*r)
 				} else {
-			
-					order_taken := network.Await_ack(r)
+					order_taken := r[taker].Await_ack()
 					if (order_taken == false) {
-						Order_undergoing(e, order, ch_remove_order, r)
+						Order_accept(e, order)
 					}
 				}
 			}
@@ -126,15 +135,14 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 			if order.AddOrRemove == def.REMOVE {
 				ch_remove_order <- order
 			} else {
-				ch_add_order <- order 
-				decision := decide_to_take_order(order, *e, *r)
-				if(decision == true) {
-					Order_accept(e, order)
+				taker := delegate_order(order, *e, *r)
+				ch_add_order <- order
+				if(taker == -1) {
+					Order_accept(e, order) 
 					Order_undergoing(e, order, ch_remove_order, r) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
 					network.Send_ack(*r)
 				} else {
-					
-					order_taken := network.Await_ack(r)
+					order_taken := r[taker].Await_ack()
 					if (order_taken == false) {
 						Order_accept(e, order)
 					}
