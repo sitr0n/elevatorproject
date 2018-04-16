@@ -83,7 +83,7 @@ func Button_manager(button <- chan def.ButtonEvent, e *def.Elevator, remote *[de
 				network.Broadcast_order(order, remote)
 				add_order <- order 
 				turn_on_light <- order
-				taker := delegate_order(order, *e, remote)
+				taker := delegate_order(order, *e, remote, 1)
 				if(taker == -1) {
 					Order_accept(e, order)
 					Order_undergoing(e, order, remove_order, remote) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
@@ -263,12 +263,9 @@ func load_state(state *def.Elevator, floor <- chan int) {
 
 		default:
 	}
-
-	fmt.Println("LOADED STATE:", state)
 }
 
 func Evaluate(e def.Elevator, o def.Order) int {
-	value := 0
 	distance := 0
 	if (o.Floor > e.CurrentFloor) {
 		distance = o.Floor - e.CurrentFloor
@@ -276,64 +273,7 @@ func Evaluate(e def.Elevator, o def.Order) int {
 		distance = e.CurrentFloor - o.Floor
 	}
 
-	for i := 0; i < def.FLOORS; i++ {
-		if (e.Stops[i] > 0) {
-			if (i != o.Floor) {
-				value += def.STOP_WEIGHT
-			}
-		}
-	}
-	fmt.Println("-----------")
-	fmt.Println("Stopweight:", value)
-	fmt.Println("Distance:", distance)
-	fmt.Println("-----------")
-	value += distance
-
-	/*
-	if (e.Dir == def.MD_Up) {
-		if (o.Floor > e.CurrentFloor) {
-			for i := e.CurrentFloor; i < o.Floor; i++ {
-				value += e.Stops[i] * def.STOP_WEIGHT
-			}
-		} else {
-			for i := o.Floor; i < def.FLOORS; i++ {
-				value += e.Stops[i] * def.STOP_WEIGHT
-			}
-		}
-		if (e.Dir != o.Dir) {
-			if (o.Floor > e.CurrentFloor) {
-				value += 2*(def.FLOORS - o.Floor)
-			} else {
-				value += 2*(def.FLOORS - e.CurrentFloor)
-			}
-			value += distance
-		} else {
-			value += distance
-		}
-	} else {
-		if (o.Floor < e.CurrentFloor) {
-			for i := o.Floor; i < e.CurrentFloor; i++ {
-				value += e.Stops[i] * def.STOP_WEIGHT
-			}
-		} else {
-			for i := 0; i < o.Floor; i++ {
-				value += e.Stops[i] * def.STOP_WEIGHT
-			}
-		}
-		if (e.Dir != o.Dir) {
-			if (o.Floor > e.CurrentFloor) {
-				value += 2*e.CurrentFloor
-			} else {
-				value += 2*o.Floor
-			}
-			value += distance
-		} else {
-			value += distance
-		}
-	}
-	*/
-		
-	return value
+	return distance
 }
 
 
