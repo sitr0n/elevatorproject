@@ -107,12 +107,12 @@ func Send_state_to_all(e def.Elevator, r *[def.ELEVATORS]Remote) {
 }
 
 func (r *Remote) Send_ack() {
-	r.send <- true
+	r.send <- ACK
 }
 
-func Send_ack(r [def.ELEVATORS]Remote) {
+func Send_ack(r *[def.ELEVATORS]Remote) {
 	for i := 0; i < def.ELEVATORS; i++ {
-		r[i].send <- true
+		r[i].send <- ACK
 	}
 }
 
