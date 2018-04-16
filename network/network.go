@@ -177,7 +177,6 @@ func (r *Remote) remote_listener() {
 	for {
 		buffer := make([]byte, 1024)
 		length, _, _ := in_connection.ReadFromUDP(buffer)
-		fmt.Println("Received something:", length)
 		if (r.Alive == false) {
 			go r.watchdog(wd_kick)
 			fmt.Println("Connection with remote", r.id, "established!")
@@ -207,18 +206,21 @@ func (r *Remote) remote_listener() {
 			err := json.Unmarshal(buffer[:length], &state)
 			def.Check(err)
 			r.state = state
+			fmt.Println("Received STATE:", state)
 			r.Send_ack(Ack_state)
 	
 		case STATE_SIZE2:
 			err := json.Unmarshal(buffer[:length], &state)
 			def.Check(err)
 			r.state = state
+			fmt.Println("Received STATE:", state)
 			r.Send_ack(Ack_state)
 			
 		case STATE_SIZE3:
 			err := json.Unmarshal(buffer[:length], &state)
 			def.Check(err)
 			r.state = state
+			fmt.Println("Received STATE:", state)
 			r.Send_ack(Ack_state)
 		
 		default:
