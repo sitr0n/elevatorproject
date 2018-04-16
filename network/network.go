@@ -177,6 +177,7 @@ func (r *Remote) remote_listener() {
 	for {
 		buffer := make([]byte, 1024)
 		length, _, _ := in_connection.ReadFromUDP(buffer)
+		fmt.Println("Received something:", length)
 		if (r.Alive == false) {
 			go r.watchdog(wd_kick)
 			fmt.Println("Connection with remote", r.id, "established!")
