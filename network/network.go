@@ -1,5 +1,5 @@
 package network
-
+import def "../def"
 import (
 	"fmt"
 	"net"
@@ -7,20 +7,14 @@ import (
 	"encoding/json"
 	"os"
 	"strconv"
-	//"log"
-	//"runtime"
 )
-
-//import unsafe "unsafe"
-import def "../def"
 
 const(
 	PING = false
 	ACK = true
 
-	PING_INTERVAL = 1000
+	_PING_PERIOD = 1000
 )
-
 type Remote struct {
 	id		int
 	address  	string
@@ -29,14 +23,12 @@ type Remote struct {
 	Orderchan	chan def.Order
 	Ackchan		chan bool
 	Reconnected	chan bool
-	State 		def.Elevator
+	state 		def.Elevator
 }
-
 var _localip string
 
 func Init(remote_address []string, r *[def.ELEVATORS]Remote) {
 	_localip = get_localip()
-
 	ch_order := make(chan def.Order, 1080)
 	
 	for i := 0; i < def.ELEVATORS; i++ {
@@ -47,12 +39,11 @@ func Init(remote_address []string, r *[def.ELEVATORS]Remote) {
 		r[i].Orderchan = ch_order
 		r[i].Ackchan = make(chan bool, 1080)
 		r[i].Reconnected = make (chan bool, 100)
-		//SHITE
 		
 		go r[i].remote_listener()
-		go r[i].remote_broadcaster()
+		//go r[i].remote_broadcaster()
 	}
-	go ping_remotes(r, PING_INTERVAL)
+	//go ping_remotes(r)
 }
 
 
@@ -72,7 +63,7 @@ func (r *Remote) Await_ack() bool {
 
 func Broadcast_state(r *[def.ELEVATORS]Remote) {
 	for i := 0; i < def.ELEVATORS; i++ {
-		r[i].send <- r[i].State
+		r[i].send <- r[i].state
 	}
 }
 
@@ -83,7 +74,7 @@ func Broadcast_order(order def.Order, r *[def.ELEVATORS]Remote) {
 }
 
 func (r *Remote) Get_state() def.Elevator {
-	return r.State
+	return r.state
 }
 
 func (r *Remote) Send_order(order def.Order) {
@@ -116,10 +107,6 @@ func Send_ack(r *[def.ELEVATORS]Remote) {
 	}
 }
 
-func (r *Remote) Set_alive(a bool) {
-	r.Alive = a
-}
-
 func (r *Remote) remote_listener() {
 	listen_addr, err := net.ResolveUDPAddr("udp", _localip + def.PORT[r.id])
 	def.Check(err)
@@ -127,15 +114,16 @@ func (r *Remote) remote_listener() {
 	def.Check(err)
 	defer in_connection.Close()
 	
-	var elevator def.Elevator
+	var state def.Elevator
 	var order def.Order
-	var ack bool = false
-	const STATE_SIZE = 44
-	const ACK_SIZE = 4
+	var ack bool
 	const PING_SIZE = 5
+	const ACK_SIZE = 4
+	const STATE_SIZE1 = 79
+	const STATE_SIZE2 = 80
+	const STATE_SIZE3 = 81
 	
 	wd_kick := make(chan bool, 100)
-	
 	for {
 		buffer := make([]byte, 1024)
 		length, _, _ := in_connection.ReadFromUDP(buffer)
@@ -147,37 +135,62 @@ func (r *Remote) remote_listener() {
 		wd_kick <- true
 		
 		switch length {
+		case PING_SIZE:
+		
 		case ACK_SIZE:
 			err := json.Unmarshal(buffer[:length], &ack)
 			def.Check(err)
-			fmt.Println("received ack")
-			r.Ackchan <- true
-			break
+			r.Ackchan <- ack
 			
-		case PING_SIZE:
-			break
-			
-		case STATE_SIZE:
-			err := json.Unmarshal(buffer[:length], &elevator)
+		case STATE_SIZE1:
+			err := json.Unmarshal(buffer[:length], &state)
 			def.Check(err)
-			
-			r.State = elevator
+			r.state = state
 			r.Send_ack()
-
-			//fmt.Println("Remote", r.id, "state changed to:", r.State)
-			break
+	
+		case STATE_SIZE2:
+			err := json.Unmarshal(buffer[:length], &state)
+			def.Check(err)
+			r.state = state
+			r.Send_ack()
+			
+		case STATE_SIZE3:
+			err := json.Unmarshal(buffer[:length], &state)
+			def.Check(err)
+			r.state = state
+			r.Send_ack()
 		
 		default:
 			err := json.Unmarshal(buffer[:length], &order)
 			def.Check(err)
 			r.Orderchan <- order
+			r.Send_ack()
 		}
 	}
 }
 
-func ping_remotes(remote *[def.ELEVATORS]Remote, period int) {
+func (r *Remote) remote_broadcaster() {
+	//local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
+	//def.Check(err)
+	target_addr,err := net.ResolveUDPAddr("udp", r.address + def.PORT[r.id])
+	def.Check(err)
+	out_connection, err := net.DialUDP("udp", nil, target_addr)
+	def.Check(err)
+	defer out_connection.Close()
+
 	for {
-		time.Sleep(time.Duration(period)*time.Millisecond)
+		select {
+		case msg := <- r.send:
+			encoded, err := json.Marshal(msg)
+			def.Check(err)
+			out_connection.Write(encoded)
+		}
+	}
+}
+
+func ping_remotes(remote *[def.ELEVATORS]Remote) {
+	for {
+		time.Sleep(time.Duration(_PING_PERIOD)*time.Millisecond)
 		for i := 0; i < def.ELEVATORS; i++ {
 			remote[i].send <- PING
 		}
@@ -197,29 +210,6 @@ func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
 	timeout <- true
 }
 
-
-func (r *Remote) remote_broadcaster() {
-	//local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
-	//def.Check(err)
-	target_addr,err := net.ResolveUDPAddr("udp", r.address + def.PORT[r.id])
-	def.Check(err)
-	out_connection, err := net.DialUDP("udp", nil, target_addr)
-	def.Check(err)
-	defer out_connection.Close()
-
-
-	for {
-		select {
-		case msg := <- r.send:
-			encoded, err := json.Marshal(msg)
-			def.Check(err)
-			
-			out_connection.Write(encoded)
-			//fmt.Println("Wrote: ", msg, "to", r.address + def.PORT[r.id])
-		}
-	}
-}
-
 func flush_channel(c <- chan interface{}) {
 	for i := 0; i < 100; i++ {
 		select {
@@ -230,16 +220,16 @@ func flush_channel(c <- chan interface{}) {
 }
 
 func (r *Remote) watchdog(kick <- chan bool) {
-	r.Set_alive(true)
+	r.Alive = true
 	for i := 0; i < 10; i++ {
-		time.Sleep(5000*time.Millisecond)
+		time.Sleep(time.Duration(_PING_PERIOD)*time.Millisecond)
 		select {
 		case <- kick:
 			i = 0
 		default:
 		}
 	}
-	r.Set_alive(false)
+	r.Alive = false
 	fmt.Println("Connection with remote", r.id, "lost.")
 }
 
@@ -269,7 +259,7 @@ func ip_address(adr string) string {
 /*
 func ip_address(adr interface{}) def.IP {
 	switch a := adr.(type) {
-	case def.IP:
+	case string:
 		return a
 	case int:
 		if (a > 23 || a < 0) {

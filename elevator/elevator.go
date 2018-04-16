@@ -1,28 +1,28 @@
 package elevator
-
+import driver "../driver"
+import network "../network"
+import def "../def"
 import ("fmt"
 	"encoding/json"
 	"io/ioutil"
 	"time"
-	//"math/rand"
 	"os"
 	"os/exec"
 )
 
-import driver "../driver"
-import network "../network"
-import def "../def"
-
-
 func Init(remote_address []string) {
 	check_remote_address(remote_address)
-	start_elevator_server()
-	driver.Init("localhost:15657", def.FLOORS)
+	//start_elevator_server()
+	//driver.Init("localhost:15657", def.FLOORS)
+	
+	var remote [def.ELEVATORS]network.Remote
+	network.Init(remote_address, &remote)
+	
+	/*
 	
 	var elevator = def.Elevator{}
-	Load_state(&elevator)
+	load_state(&elevator)
 	elevator.Dir = def.MD_Stop
-
 
 	
 	var remote [def.ELEVATORS]network.Remote
@@ -45,6 +45,7 @@ func Init(remote_address []string) {
 	go order_queue(ch_add_order, ch_remove_order, ch_buttons, &remote)	
 	go driver.PollObstructionSwitch(ch_obstr)
 	go order_handler(&remote, ch_add_order, ch_remove_order, &elevator)
+	*/
 }
 
 func start_elevator_server() {
@@ -59,18 +60,17 @@ func check_remote_address(arg []string) {
 	if (array_length != def.ELEVATORS) {
 		fmt.Println("Expecting", def.ELEVATORS, "arguments.")
 		fmt.Println("Enter remote elevator IP address(es) or workstation number(s).")
-		os.Exit(0)
+		os.Exit(2)
 	}
-
 }
 
 
 
-func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote, s <-chan bool, add_order chan<- def.Order, remove_order chan def.Order) {
+func Button_manager(button <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote, stop <-chan bool, add_order chan<- def.Order, remove_order chan def.Order) {
 
 	for {
 		select {
-		case event := <- b:
+		case event := <- button:
 			order := button_event_to_order(event)
 			if (event.Button == def.BT_Cab) {
 				Order_accept(e, order)
@@ -92,12 +92,12 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 					}
 				}
 			}
-			Save_state(e)
+			save_state(e)
 
 			network.Send_state_to_all(*e, remote)
 		
 
-		case <- s:
+		case <- stop:
 			emergency_stop(e)
 		}
 	}
@@ -136,7 +136,7 @@ func Event_manager(f <- chan int, e *def.Elevator, remote *[def.ELEVATORS]networ
 					move_to_next_floor(e)
 				}
 			}
-			Save_state(e)
+			save_state(e)
 			prev_floor = floor
 
 		case <- remote[0].Reconnected:
@@ -150,7 +150,6 @@ func Event_manager(f <- chan int, e *def.Elevator, remote *[def.ELEVATORS]networ
 }
 
 func open_door(e *def.Elevator) {
-	//fmt.Println("Stopping at floor ", floor)
 	e.DOOR_OPEN = true
 	driver.SetMotorDirection(def.MD_Stop)
 	driver.SetDoorOpenLamp(true)
@@ -163,17 +162,16 @@ func Find_next_stop(e *def.Elevator) def.MotorDirection {
 	var direction def.MotorDirection = def.MD_Stop
 	if (e.Dir == def.MD_Up) {
 		for i := e.CurrentFloor; i < 4; i++ {
-			// fmt.Println("Percieved elevator stops: ", e.Stops)
 			if (e.Stops[i] > 0) {
 				direction = def.MD_Up
-				//fmt.Println("continuing up")
+				//fmt.Println("Continuing up")
 				return direction
 			}
 		}
 		for i := e.CurrentFloor; i >= 0; i-- {
 			if (e.Stops[i] > 0) {
 				direction = def.MD_Down
-				//fmt.Println("turning down")
+				//fmt.Println("Turning down")
 				e.Dir = direction
 				return direction
 			}
@@ -182,20 +180,20 @@ func Find_next_stop(e *def.Elevator) def.MotorDirection {
 		for i := e.CurrentFloor; i >= 0; i-- {
 			if (e.Stops[i] > 0) {
 				direction = def.MD_Down
-				//fmt.Println("continuing down")
+				//fmt.Println("Continuing down")
 				return direction
 			}
 		}
 		for i := e.CurrentFloor; i < 4; i++ {
 			if (e.Stops[i] > 0) {
 				direction = def.MD_Up
-				//fmt.Println("turning up")
+				//fmt.Println("Turning up")
 				e.Dir = direction
 				return direction
 			}
 		}
 	}
-	fmt.Println("No pending orders. Stopping")
+	fmt.Println("No pending orders. Stopping.")
 	e.Dir = def.MD_Stop
 	return direction
 }
@@ -205,16 +203,15 @@ func move_to_next_floor(elevator *def.Elevator) {
 	driver.SetMotorDirection(motor_direction)
 }
 
-
-func Save_state(state *def.Elevator) {
+func save_state(state *def.Elevator) {
 	jsonState, err := json.Marshal(state)
 	def.Check(err)
 
-	err = ioutil.WriteFile("elevator/state.json", jsonState, 0644) // ERROR PRONE
+	err = ioutil.WriteFile("elevator/state.json", jsonState, 0644)
 	def.Check(err)
 }
 
-func Load_state(state *def.Elevator) {	
+func load_state(state *def.Elevator) {	
 	jsonState, err := ioutil.ReadFile("elevator/state.json")
 	def.Check(err)
 	
@@ -224,15 +221,7 @@ func Load_state(state *def.Elevator) {
 	driver.SetStopLamp(state.EMERG_STOP)
 	state.DOOR_OPEN = false
 	driver.SetDoorOpenLamp(false)
-
 	state.Dir = def.MD_Stop
-}
-
-func LoadState_test(state *def.Elevator) {
-	var jsonBlob = []byte(`{"dir":1,"currentfloor":0,"stops":[1,1,1,1]}`)
-	
-	err := json.Unmarshal(jsonBlob, &state)
-	def.Check(err)
 }
 
 func Evaluate(e def.Elevator, o def.Order) int {

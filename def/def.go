@@ -1,5 +1,4 @@
 package def
-
 import(
 		"log"
 		"time"
@@ -7,8 +6,6 @@ import(
 
 var PORT []string =  []string 	{":51299",
 				 ":51300"}
-
-type IP string
 
 var WORKSPACE []string = []string {"0",
 				  "129.241.187.140",

@@ -1,18 +1,11 @@
 package main
-
 import ("fmt"
-	//"os/exec"
-	//"time"
 	"os"
+	"./elevator"
 )
-import elevator "./elevator"
-//import driver "./driver"
-//import def "./def"
-
-
 
 func main() {
-
+	ch_exit	   := make(chan bool)
 	args := os.Args[1:]
 	elevator.Init(args)
 	
@@ -22,9 +15,5 @@ func main() {
 	fmt.Println("--------------------------")
 	fmt.Println("--------------------------")
 	
-	
-	ch_exit	   := make(chan bool)
-
-
 	<- ch_exit
 }

@@ -1,23 +1,16 @@
 package driver
-
+import def "../def"
 import ("fmt"
 	"sync"
 	"net"
 	"time"
 )
 
-import def "../def"
-
 const _pollRate = 20 * time.Millisecond
-
 var _initialized bool = false
 var _numFloors int = 4
 var _mtx sync.Mutex
 var _conn net.Conn
-//var d elevio.MotorDirection = elevio.MD_Up
-
-
-
 
 func Init(addr string, numFloors int) {
 	if _initialized {
@@ -33,7 +26,6 @@ func Init(addr string, numFloors int) {
 	}
 	_initialized = true
 }
-
 
 func SetMotorDirection(dir def.MotorDirection) {
 	_mtx.Lock()
@@ -64,8 +56,6 @@ func SetStopLamp(value bool) {
 	defer _mtx.Unlock()
 	_conn.Write([]byte{5, toByte(value), 0, 0})
 }
-
-
 
 func PollButtons(receiver chan<- def.ButtonEvent) {
 	prev := make([][3]bool, _numFloors)
