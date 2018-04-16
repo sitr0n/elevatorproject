@@ -35,7 +35,7 @@ func Init(remote_address []string) {
 	ch_add_order := make(chan def.Order, 100)
 	ch_remove_order := make(chan def.Order, 100)
 
-	go Button_manager(ch_buttons, &elevator, &remote,/* ch_stop,*/ ch_add_order, ch_remove_order)
+	go Button_manager(ch_buttons, &elevator, &remote, /*ch_stop,*/ ch_add_order, ch_remove_order)
 	go driver.PollButtons(ch_buttons)
 	go driver.PollStopButton(ch_stop)
 	go Event_manager(ch_floors, &elevator, &remote)
@@ -65,7 +65,7 @@ func check_remote_address(arg []string) {
 
 
 
-func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote/*, s <-chan bool*/, add_order chan<- def.Order, remove_order chan def.Order) {
+func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote, /*s <-chan bool,*/ add_order chan<- def.Order, remove_order chan def.Order) {
 
 	for {
 		select {
@@ -75,10 +75,7 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 				Order_accept(e, order)
 				//add_order <- order
 				//Order_undergoing(e, order, remove_order, remote)
-				fmt.Println("-------------------------------")
-				fmt.Println("Button - Order floor: ", event.Floor)
-				fmt.Println("Button - Elevator stops: ", e.Stops)
-				fmt.Println("Button - Current motor direction: ", e.Dir)
+				fmt.Println("Cab-Call - Order floor: ", event.Floor)
 			} else { 
 				network.Broadcast_order(order, remote)
 				add_order <- order 
@@ -99,8 +96,8 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 			Save_state(e)
 
 			network.Send_state_to_all(*e, remote)
+		
 		/*
-
 		case stop := <- s:
 			//var prevDir def.MotorDirection
 			time.Sleep(time.Second)
@@ -114,7 +111,8 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 				//e.Dir = prevDir
 				fmt.Println("stopping is false")
 				//time.Sleep(20 * time.Millisecond)
-			} */
+			}
+		*/
 			
 		}
 	}
@@ -131,6 +129,7 @@ func Event_manager(f <- chan int, e *def.Elevator, remote *[def.ELEVATORS]networ
 				fmt.Println("Current floor: ", e.CurrentFloor)
 				if (e.Stops[floor] > 0) {
 					e.Stops[floor] = 0
+					fmt.Println(e.Stops)
 					open_door()
 					
 				}
@@ -207,8 +206,6 @@ func move_to_next_floor(elevator *def.Elevator) {
 
 
 func Save_state(state *def.Elevator) {
-	fmt.Println("Saving state.")
-
 	jsonState, err := json.Marshal(state)
 	def.Check(err)
 
@@ -216,9 +213,7 @@ func Save_state(state *def.Elevator) {
 	def.Check(err)
 }
 
-func Load_state(state *def.Elevator) {
-	fmt.Println("\nLoading data...\n")
-	
+func Load_state(state *def.Elevator) {	
 	jsonState, err := ioutil.ReadFile("elevator/state.json")
 	def.Check(err)
 	
@@ -232,11 +227,6 @@ func LoadState_test(state *def.Elevator) {
 	err := json.Unmarshal(jsonBlob, &state)
 	def.Check(err)
 }
-
-
-
-
-
 
 func Evaluate(e def.Elevator, o def.Order) int {
 	value := 0

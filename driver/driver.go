@@ -147,6 +147,7 @@ func getStop() bool {
 	_conn.Write([]byte{8, 0, 0, 0})
 	var buf [4]byte
 	_conn.Read(buf[:])
+	fmt.Println("getStop:", toBool(buf[1]))
 	return toBool(buf[1])
 }
 
