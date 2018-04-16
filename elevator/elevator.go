@@ -238,6 +238,7 @@ func LoadState_test(state *def.Elevator) {
 
 
 
+
 func Evaluate(e def.Elevator, o def.Order) int {
 	value := 0
 	distance := o.Floor - e.CurrentFloor
