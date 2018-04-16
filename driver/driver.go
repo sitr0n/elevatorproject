@@ -33,7 +33,7 @@ func SetMotorDirection(dir def.MotorDirection) {
 	_conn.Write([]byte{1, byte(dir), 0, 0})
 }
 
-func SetButtonLamp(button int, floor int, value bool) { //was ButtonType
+func SetButtonLamp(button int, floor int, value bool) { 
 	_mtx.Lock()
 	defer _mtx.Unlock()
 	_conn.Write([]byte{2, byte(button), byte(floor), toByte(value)})
@@ -87,7 +87,6 @@ func PollFloorSensor(receiver chan<- int) {
 
 func PollStopButton(receiver chan<- bool) {
 	prev := false
-	//ready := false
 	for {
 		time.Sleep(_pollRate)
 		v := getStop()

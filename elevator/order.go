@@ -1,8 +1,6 @@
 package elevator
 
 import ("fmt"
-	//"encoding/json"
-	//"io/ioutil"
 	"time"
 	"math/rand"
 )
@@ -79,7 +77,7 @@ func Order_accept(e *def.Elevator, o def.Order) {
 	if (e.Dir == def.MD_Stop && e.DOOR_OPEN == false && e.EMERG_STOP == false) {
 		move_to_next_floor(e)
 	}
-	//fmt.Println(e.Stops)
+
 }
 
 func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, ch_buttons chan<- def.ButtonEvent, r *[def.ELEVATORS]network.Remote, ch_turn_off_light chan<- def.Order) {
@@ -100,7 +98,7 @@ func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, 
 					fmt.Println("removing order ID:", c.ID)
 					ch_turn_off_light <- c
 					q = q[:i+copy(q[i:], q[i+1:])]
-					//fmt.Println(q)
+
 					
 				}
 				i++
@@ -111,7 +109,7 @@ func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, 
 	}
 }
 
-func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Order, ch_remove_order chan<- def.Order, e *def.Elevator, ch_turn_on_light chan<- def.Order) { //listener
+func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Order, ch_remove_order chan<- def.Order, e *def.Elevator, ch_turn_on_light chan<- def.Order) { 
 	for {
 		select {
 		case order := <- r[0].Orderchan:
@@ -124,7 +122,7 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 				if(taker < 0) {
 					fmt.Println("Local cost wins!")
 					Order_accept(e, order) 
-					Order_undergoing(e, order, ch_remove_order, r) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
+					Order_undergoing(e, order, ch_remove_order, r)
 					network.Send_ack(def.Ack_order_accept, r)
 				} else {
 					fmt.Println("Remote cost wins!")
@@ -146,7 +144,7 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 				if(taker < 0) {
 					fmt.Println("Local cost wins!")
 					Order_accept(e, order) 
-					Order_undergoing(e, order, ch_remove_order, r) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
+					Order_undergoing(e, order, ch_remove_order, r) 
 					network.Send_ack(def.Ack_order_accept, r)
 				} else {
 					fmt.Println("Remote cost wins!")
@@ -164,7 +162,6 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 
 func timecheck_order_queue(q []def.Order, ch_buttons chan<- def.ButtonEvent, ch_remove_order chan<- def.Order) {
 	for _, c := range q {
-		//time.Sleep(time.Second)
 		if time.Now().Sub(c.Stamp) > 25*time.Second {
 			fmt.Println(c.ID," failed")
 			newEvent :=  def.ButtonEvent{Floor: c.Floor, Button: def.BT_Cab}

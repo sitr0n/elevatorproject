@@ -234,8 +234,6 @@ func (r *Remote) remote_listener() {
 }
 
 func (r *Remote) remote_broadcaster() {
-	//local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
-	//def.Check(err)
 	target_addr,err := net.ResolveUDPAddr("udp", r.address + def.PORT[r.id])
 	def.Check(err)
 	out_connection, err := net.DialUDP("udp", nil, target_addr)

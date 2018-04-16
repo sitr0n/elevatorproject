@@ -89,7 +89,6 @@ const (
 func Check(e error) {
 	if e != nil {
 		log.Print(e)
-		//continue
 	}
 }
 

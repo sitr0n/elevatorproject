@@ -18,20 +18,13 @@ func Init(remote_address []string) {
 	var remote [def.ELEVATORS]network.Remote
 	network.Init(remote_address, &remote)
 
-	
 	var elevator = def.Elevator{}
-
-	
-	//var remote [def.ELEVATORS]network.Remote
-	//network.Init(remote_address, &remote)
 	
 	ch_obstr   	:= make(chan bool, 100)
-
 	ch_stop    	:= make(chan bool, 100)
-
-	ch_buttons := make(chan def.ButtonEvent, 100)
-	ch_floors  := make(chan int, 100)
-	ch_add_order := make(chan def.Order, 100)
+	ch_buttons 	:= make(chan def.ButtonEvent, 100)
+	ch_floors  	:= make(chan int, 100)
+	ch_add_order 	:= make(chan def.Order, 100)
 	ch_remove_order := make(chan def.Order, 100)
 	ch_turn_on_light := make(chan def.Order, 100)
 	ch_turn_off_light := make(chan def.Order, 100)
@@ -86,7 +79,7 @@ func Button_manager(button <- chan def.ButtonEvent, e *def.Elevator, remote *[de
 				taker := delegate_order(order, *e, remote, 1)
 				if(taker == -1) {
 					Order_accept(e, order)
-					Order_undergoing(e, order, remove_order, remote) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
+					Order_undergoing(e, order, remove_order, remote) 
 					network.Send_ack(def.Ack_order_accept, remote)
 				} else {
 					order_taken := remote[taker].Await_ack(def.Ack_order_accept)
@@ -123,8 +116,6 @@ func emergency_stop(e *def.Elevator) {
 }
 
 func lights_manager(turn_on_light <-chan def.Order, turn_off_light <-chan def.Order) {
-	//on order all PCs floor light should turn on
-	//on completion of order, floor light should turn off.
 	for {
 		select {
 		case order := <-turn_on_light:
@@ -156,7 +147,6 @@ func Event_manager(f <- chan int, e *def.Elevator, remote *[def.ELEVATORS]networ
 			if (floor != prev_floor) {
 				driver.SetFloorIndicator(floor)
 				e.CurrentFloor = floor
-				//fmt.Println("Current floor: ", e.CurrentFloor)
 				if (e.Stops[floor] > 0) {
 					e.Stops[floor] = 0
 					fmt.Println(e.Stops)
@@ -198,14 +188,12 @@ func Find_next_stop(e *def.Elevator) def.MotorDirection {
 		for i := e.CurrentFloor; i < 4; i++ {
 			if (e.Stops[i] > 0) {
 				direction = def.MD_Up
-				//fmt.Println("Continuing up")
 				return direction
 			}
 		}
 		for i := e.CurrentFloor; i >= 0; i-- {
 			if (e.Stops[i] > 0) {
 				direction = def.MD_Down
-				//fmt.Println("Turning down")
 				e.Dir = direction
 				return direction
 			}
@@ -214,14 +202,12 @@ func Find_next_stop(e *def.Elevator) def.MotorDirection {
 		for i := e.CurrentFloor; i >= 0; i-- {
 			if (e.Stops[i] > 0) {
 				direction = def.MD_Down
-				//fmt.Println("Continuing down")
 				return direction
 			}
 		}
 		for i := e.CurrentFloor; i < 4; i++ {
 			if (e.Stops[i] > 0) {
 				direction = def.MD_Up
-				//fmt.Println("Turning up")
 				e.Dir = direction
 				return direction
 			}
