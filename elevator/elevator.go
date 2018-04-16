@@ -254,6 +254,7 @@ func load_state(state *def.Elevator) {
 	state.DOOR_OPEN = false
 	driver.SetDoorOpenLamp(false)
 	state.Dir = def.MD_Stop
+	fmt.Println("LOADED STATE:", state)
 }
 
 func Evaluate(e def.Elevator, o def.Order) int {
