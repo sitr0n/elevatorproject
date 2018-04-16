@@ -159,7 +159,7 @@ func (r *Remote) remote_listener() {
 	var order def.Order
 	var ack ack
 	const PING_SIZE = 5
-	const ACK_SIZE = 4
+	const ACK_SIZE = 2
 	const STATE_SIZE1 = 79
 	const STATE_SIZE2 = 80
 	const STATE_SIZE3 = 81
