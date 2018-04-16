@@ -20,8 +20,6 @@ func Init(remote_address []string) {
 
 	
 	var elevator = def.Elevator{}
-	load_state(&elevator)
-	elevator.Dir = def.MD_Stop
 
 	
 	//var remote [def.ELEVATORS]network.Remote
@@ -49,6 +47,8 @@ func Init(remote_address []string) {
 	go driver.PollObstructionSwitch(ch_obstr)
 	go order_handler(&remote, ch_add_order, ch_remove_order, &elevator, ch_turn_on_light)
 	go lights_manager(ch_turn_on_light, ch_turn_off_light)
+
+	load_state(&elevator, ch_floors)
 	
 }
 
@@ -243,7 +243,7 @@ func save_state(state *def.Elevator) {
 	def.Check(err)
 }
 
-func load_state(state *def.Elevator) {	
+func load_state(state *def.Elevator, floor <- chan int) {	
 	jsonState, err := ioutil.ReadFile("elevator/state.json")
 	def.Check(err)
 	
@@ -254,6 +254,14 @@ func load_state(state *def.Elevator) {
 	state.DOOR_OPEN = false
 	driver.SetDoorOpenLamp(false)
 	state.Dir = def.MD_Stop
+
+	select {
+		case f := <- floor:
+			state.CurrentFloor = f
+
+		default:
+	}
+
 	fmt.Println("LOADED STATE:", state)
 }
 
