@@ -125,7 +125,7 @@ func Event_manager(f <- chan int, e *def.Elevator, remote *[def.ELEVATORS]networ
 			if (floor != prev_floor) {
 				driver.SetFloorIndicator(floor)
 				e.CurrentFloor = floor
-				fmt.Println("Current floor: ", e.CurrentFloor)
+				//fmt.Println("Current floor: ", e.CurrentFloor)
 				if (e.Stops[floor] > 0) {
 					e.Stops[floor] = 0
 					fmt.Println(e.Stops)
@@ -166,14 +166,14 @@ func Find_next_stop(e *def.Elevator) def.MotorDirection {
 			// fmt.Println("Percieved elevator stops: ", e.Stops)
 			if (e.Stops[i] > 0) {
 				direction = def.MD_Up
-				fmt.Println("continuing up")
+				//fmt.Println("continuing up")
 				return direction
 			}
 		}
 		for i := e.CurrentFloor; i >= 0; i-- {
 			if (e.Stops[i] > 0) {
 				direction = def.MD_Down
-				fmt.Println("turning down")
+				//fmt.Println("turning down")
 				e.Dir = direction
 				return direction
 			}
@@ -182,14 +182,14 @@ func Find_next_stop(e *def.Elevator) def.MotorDirection {
 		for i := e.CurrentFloor; i >= 0; i-- {
 			if (e.Stops[i] > 0) {
 				direction = def.MD_Down
-				fmt.Println("continuing down")
+				//fmt.Println("continuing down")
 				return direction
 			}
 		}
 		for i := e.CurrentFloor; i < 4; i++ {
 			if (e.Stops[i] > 0) {
 				direction = def.MD_Up
-				fmt.Println("turning up")
+				//fmt.Println("turning up")
 				e.Dir = direction
 				return direction
 			}

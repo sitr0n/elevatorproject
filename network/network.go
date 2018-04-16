@@ -150,6 +150,7 @@ func (r *Remote) remote_listener() {
 		case ACK_SIZE:
 			err := json.Unmarshal(buffer[:length], &ack)
 			def.Check(err)
+			fmt.Println("received ack")
 			r.Ackchan <- true
 			break
 			
@@ -163,7 +164,7 @@ func (r *Remote) remote_listener() {
 			r.State = elevator
 			r.Send_ack()
 
-			fmt.Println("Remote", r.id, "state changed to:", r.State)
+			//fmt.Println("Remote", r.id, "state changed to:", r.State)
 			break
 		
 		default:
