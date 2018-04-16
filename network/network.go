@@ -246,9 +246,6 @@ func (r *Remote) remote_broadcaster() {
 			encoded, err := json.Marshal(msg)
 			def.Check(err)
 			out_connection.Write(encoded)
-			if (r.Alive) {
-				fmt.Println("Sending:", msg)
-			}
 		}
 	}
 }
