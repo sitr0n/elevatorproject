@@ -124,6 +124,7 @@ func (r *Remote) Send_order(order def.Order) {
 func (r *Remote) Send_state(state def.Elevator) {
 	for {
 		r.send <- state
+		fmt.Println("Sending state:", state)
 		received := r.Await_ack(Ack_state)
 		if (received == true || r.Alive == false) {
 			break
@@ -193,6 +194,7 @@ func (r *Remote) remote_listener() {
 			case Ack_order:
 				r.ackorder <- true
 			case Ack_state:
+				fmt.Println("Remote got my state")
 				r.ackstate <- true
 			case Ack_order_accept:
 				fmt.Println("Remote", r.id, "has confirmed the order!\n")
@@ -243,7 +245,7 @@ func (r *Remote) remote_broadcaster() {
 			encoded, err := json.Marshal(msg)
 			def.Check(err)
 			out_connection.Write(encoded)
-			fmt.Println("Sending:", msg, "to", r.id)
+			//fmt.Println("Sending:", msg, "to", r.id)
 		}
 	}
 }
