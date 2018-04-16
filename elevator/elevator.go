@@ -222,6 +222,8 @@ func Load_state(state *def.Elevator) {
 	def.Check(err)
 
 	driver.SetStopLamp(state.EMERG_STOP)
+	state.DOOR_OPEN = false
+	driver.SetDoorOpenLamp(false)
 
 	state.Dir = def.MD_Stop
 }
