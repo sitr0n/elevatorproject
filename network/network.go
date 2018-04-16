@@ -28,6 +28,7 @@ type Remote struct {
 	send		chan interface{}
 	Orderchan	chan def.Order
 	Ackchan		chan bool
+	Reconnected	chan bool
 	State 		def.Elevator
 }
 
@@ -45,6 +46,8 @@ func Init(remote_address []string, r *[def.ELEVATORS]Remote) {
 		r[i].send = make(chan interface{}, 1080)
 		r[i].Orderchan = ch_order
 		r[i].Ackchan = make(chan bool, 1080)
+		r[i].Reconnected = make (chan bool, 100)
+		//SHITE
 		
 		go r[i].remote_listener()
 		go r[i].remote_broadcaster()
@@ -140,6 +143,7 @@ func (r *Remote) remote_listener() {
 		if (r.Alive == false) {
 			go r.watchdog(wd_kick)
 			fmt.Println("Connection with remote", r.id, "established!")
+			r.Reconnected <- true
 		}
 		wd_kick <- true
 		
