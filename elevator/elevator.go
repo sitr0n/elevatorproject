@@ -83,11 +83,11 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 				}
 			} else { 
 				network.Broadcast_order(order, remote)
-				
+				add_order <- order 
 				taker := delegate_order(order, *e, *remote)
 				if(taker == -1) {
 					Order_accept(e, order)
-					add_order <- order 
+					
 					Order_undergoing(e, order, remove_order, remote) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
 					network.Send_ack(*remote)
 					if (e.Dir == def.MD_Stop) {
@@ -97,6 +97,7 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 					order_taken := remote[taker].Await_ack()
 					if (order_taken == false) {
 						Order_accept(e, order)
+						Order_undergoing(e, order, remove_order, remote)
 						if (e.Dir == def.MD_Stop) {
 							move_to_next_floor(e)
 						}

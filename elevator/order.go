@@ -157,7 +157,7 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 func timecheck_order_queue(q []def.Order, ch_buttons chan<- def.ButtonEvent, ch_remove_order chan<- def.Order) {
 	for _, c := range q {
 		//time.Sleep(time.Second)
-		if time.Now().Sub(c.Stamp) > 5*time.Second {
+		if time.Now().Sub(c.Stamp) > 10*time.Second {
 			fmt.Println(c.ID," failed")
 			newEvent :=  def.ButtonEvent{Floor: c.Floor, Button: def.BT_Cab}
 			ch_buttons <- newEvent
