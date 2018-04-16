@@ -267,7 +267,9 @@ func Evaluate(e def.Elevator, o def.Order) int {
 
 	for i := 0; i < def.FLOORS; i++ {
 		if (e.Stops[i] > 0) {
-			value += def.STOP_WEIGHT
+			if (i != o.Floor) {
+				value += def.STOP_WEIGHT
+			}
 		}
 	}
 	fmt.Println("-----------")
