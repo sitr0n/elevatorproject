@@ -48,6 +48,7 @@ func Init(remote_address []string) {
 	go order_queue(ch_add_order, ch_remove_order, ch_buttons, &remote, ch_turn_off_light)	
 	go driver.PollObstructionSwitch(ch_obstr)
 	go order_handler(&remote, ch_add_order, ch_remove_order, &elevator, ch_turn_on_light)
+	go lights_manager(ch_turn_on_light, ch_turn_off_light)
 	
 }
 
