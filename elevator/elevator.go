@@ -17,9 +17,8 @@ func Init(remote_address []string) {
 	
 	var remote [def.ELEVATORS]network.Remote
 	network.Init(remote_address, &remote)
-	
+
 	/*
-	
 	var elevator = def.Elevator{}
 	load_state(&elevator)
 	elevator.Dir = def.MD_Stop
@@ -36,8 +35,12 @@ func Init(remote_address []string) {
 	ch_floors  := make(chan int, 100)
 	ch_add_order := make(chan def.Order, 100)
 	ch_remove_order := make(chan def.Order, 100)
+	ch_turn_on_light := make(chan def.Order, 100)
+	ch_turn_off_light := make(chan def.Order, 100)
+	
+	
 
-	go Button_manager(ch_buttons, &elevator, &remote, ch_stop, ch_add_order, ch_remove_order)
+	go Button_manager(ch_buttons, &elevator, &remote, ch_stop, ch_add_order, ch_remove_order,ch_turn_on_light)
 	go driver.PollButtons(ch_buttons)
 	go driver.PollStopButton(ch_stop)
 	go Event_manager(ch_floors, &elevator, &remote)
@@ -65,8 +68,7 @@ func check_remote_address(arg []string) {
 }
 
 
-
-func Button_manager(button <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote, stop <-chan bool, add_order chan<- def.Order, remove_order chan def.Order) {
+func Button_manager(button <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELEVATORS]network.Remote, stop <-chan bool, add_order chan<- def.Order, remove_order chan def.Order/*, turn_on_light chan<- def.Order*/) {
 
 	for {
 		select {
@@ -78,6 +80,7 @@ func Button_manager(button <- chan def.ButtonEvent, e *def.Elevator, remote *[de
 			} else { 
 				network.Broadcast_order(order, remote)
 				add_order <- order 
+				//turn_on_light <- order
 				taker := delegate_order(order, *e, *remote)
 				if(taker == -1) {
 					Order_accept(e, order)
@@ -116,6 +119,20 @@ func emergency_stop(e *def.Elevator) {
 	}
 	
 }
+/*
+func lights_manager(turn_on_light <-chan def.Order, turn_off_light <-chan def.Order) {
+	//on order all PCs floor light should turn on
+	//on completion of order, floor light should turn off.
+	for {
+		select {
+		case order := <-turn_on_light:
+			driver.SetButtonLamp(order.Dir, order.Floor, true)
+		case order := <-turn_off_light:
+			driver.SetButtonLamp(order.Dir, order.Floor, false)
+		}
+	}
+}
+*/
 
 func Event_manager(f <- chan int, e *def.Elevator, remote *[def.ELEVATORS]network.Remote) {
 	prev_floor := -1
