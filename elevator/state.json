@@ -1,5 +1,1 @@
-<<<<<<< HEAD
-{"Dir":0,"CurrentFloor":2,"Stops":[0,1,0,0],"EMERG_STOP":true,"DOOR_OPEN":false}
-=======
-{"Dir":0,"CurrentFloor":3,"Stops":[0,0,0,0]}
->>>>>>> 632b607d02cf8cac75d5165df585ece148e6dfcc
+{"Dir":0,"CurrentFloor":2,"Stops":[0,0,0,0],"EMERG_STOP":false,"DOOR_OPEN":false}
