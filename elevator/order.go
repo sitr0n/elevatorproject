@@ -64,6 +64,7 @@ func Wait_for_completion(e *def.Elevator, order def.Order, remove_order chan<- d
 			order.AddOrRemove = def.REMOVE
 			network.Broadcast_order(order, r)
 			remove_order <- order
+			
 			break
 		}
 	}
@@ -82,7 +83,7 @@ func Order_accept(e *def.Elevator, o def.Order) {
 	//fmt.Println(e.Stops)
 }
 
-func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, ch_buttons chan<- def.ButtonEvent, r *[def.ELEVATORS]network.Remote) {
+func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, ch_buttons chan<- def.ButtonEvent, r *[def.ELEVATORS]network.Remote/*, ch_turn_off_light chan<- def.Order*/) {
 
 	var q []def.Order
 	
@@ -92,21 +93,16 @@ func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, 
 		case newO := <- ch_add_order:
 			q = append(q, newO)
 			fmt.Println("added order ID:",newO.ID)
-		/*
-		case remoteO := <- r[0].Orderchan:
-			if (remoteO.AddOrRemove == def.ADD) {
-				q = append(q, remoteO)
-			} else {
-				ch_remove_order <- remoteO
-			}	
-		*/			
+			
 		case removeO := <- ch_remove_order:
 			i := 0
 			for _,c := range q {
 				if c.ID == removeO.ID {
 					fmt.Println("removing order ID:", c.ID)
+					//ch_turn_off_light <- c
 					q = q[:i+copy(q[i:], q[i+1:])]
 					//fmt.Println(q)
+					
 				}
 				i++
 			}
@@ -116,13 +112,14 @@ func order_queue(ch_add_order <-chan def.Order, ch_remove_order chan def.Order, 
 	}
 }
 
-func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Order, ch_remove_order chan<- def.Order, e *def.Elevator) { //listener
+func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Order, ch_remove_order chan<- def.Order, e *def.Elevator/*, ch_turn_on_light chan<- def.Order*/) { //listener
 	for {
 		select {
 		case order := <- r[0].Orderchan:
 			if order.AddOrRemove == def.REMOVE {
 				ch_remove_order <- order
 			} else {
+				//ch_turn_on_light <- order
 				taker := delegate_order(order, *e, *r)
 				ch_add_order <- order
 				if(taker == -1) {
@@ -142,6 +139,7 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 			if order.AddOrRemove == def.REMOVE {
 				ch_remove_order <- order
 			} else {
+				//ch_turn_on_light <- order
 				taker := delegate_order(order, *e, *r)
 				ch_add_order <- order
 				if(taker == -1) {
