@@ -136,7 +136,6 @@ func (r *Remote) remote_listener() {
 	
 	wd_kick := make(chan bool, 100)
 	
-	fmt.Println("Starting remote", r.id, "listener!\n")
 	for {
 		buffer := make([]byte, 1024)
 		length, _, _ := in_connection.ReadFromUDP(buffer)
@@ -199,7 +198,6 @@ func timeout_timer(cancel <- chan bool, timeout chan <- bool) {
 
 
 func (r *Remote) remote_broadcaster() {
-	fmt.Println("Starting remote bcaster")
 	//local_addr, err := net.ResolveUDPAddr("udp", _localip + ":0")
 	//def.Check(err)
 	target_addr,err := net.ResolveUDPAddr("udp", r.address + def.PORT[r.id])

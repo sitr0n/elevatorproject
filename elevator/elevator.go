@@ -13,6 +13,7 @@ import driver "../driver"
 import network "../network"
 import def "../def"
 
+var _DOOR_IS_OPEN = false
 
 func Init(remote_address []string) {
 	check_remote_address(remote_address)
@@ -78,9 +79,6 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 				fmt.Println("Button - Order floor: ", event.Floor)
 				fmt.Println("Button - Elevator stops: ", e.Stops)
 				fmt.Println("Button - Current motor direction: ", e.Dir)
-				if (e.Dir == def.MD_Stop) {
-					move_to_next_floor(e)
-				}
 			} else { 
 				network.Broadcast_order(order, remote)
 				add_order <- order 
@@ -90,17 +88,11 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 					
 					Order_undergoing(e, order, remove_order, remote) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
 					network.Send_ack(*remote)
-					if (e.Dir == def.MD_Stop) {
-						move_to_next_floor(e)
-					}
 				} else {
 					order_taken := remote[taker].Await_ack()
 					if (order_taken == false) {
 						Order_accept(e, order)
 						Order_undergoing(e, order, remove_order, remote)
-						if (e.Dir == def.MD_Stop) {
-							move_to_next_floor(e)
-						}
 					}
 				}
 			}
@@ -135,7 +127,7 @@ func Event_manager(f <- chan int, e *def.Elevator, remote *[def.ELEVATORS]networ
 		case floor := <- f:
 			if (floor != prev_floor) {
 				driver.SetFloorIndicator(floor)
-				ep.CurrentFloor = floor
+				e.CurrentFloor = floor
 				fmt.Println("Current floor: ", e.CurrentFloor)
 				if (e.Stops[floor] > 0) {
 					e.Stops[floor] = 0
@@ -147,11 +139,11 @@ func Event_manager(f <- chan int, e *def.Elevator, remote *[def.ELEVATORS]networ
 			Save_state(e)
 			prev_floor = floor
 
-		case <- r[0].Reconnected:
-			r[0].Send_state(e)
+		case <- remote[0].Reconnected:
+			go remote[0].Send_state(*e)
 		
-		case <- r[1].Reconnected:
-			r[1].Send_state(e)
+		case <- remote[1].Reconnected:
+			go remote[1].Send_state(*e)
 		
 		}
 	}
@@ -159,10 +151,12 @@ func Event_manager(f <- chan int, e *def.Elevator, remote *[def.ELEVATORS]networ
 
 func open_door() {
 	//fmt.Println("Stopping at floor ", floor)
+	_DOOR_IS_OPEN = true
 	driver.SetMotorDirection(def.MD_Stop)
 	driver.SetDoorOpenLamp(true)
 	time.Sleep(5*time.Second)
 	driver.SetDoorOpenLamp(false)
+	_DOOR_IS_OPEN = false
 }
 
 func Find_next_stop(e *def.Elevator) def.MotorDirection {

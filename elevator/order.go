@@ -76,6 +76,9 @@ func Order_undergoing(e *def.Elevator, order def.Order, remove_order chan<- def.
 
 func Order_accept(e *def.Elevator, o def.Order) {
 	e.Stops[o.Floor] = 1
+	if (e.Dir == def.MD_Stop && _DOOR_IS_OPEN == false) {
+		move_to_next_floor(e)
+	}
 	//fmt.Println(e.Stops)
 }
 
@@ -130,6 +133,7 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 					order_taken := r[taker].Await_ack()
 					if (order_taken == false) {
 						Order_accept(e, order)
+						ch_remove_order <- order
 					}
 				}
 			}
@@ -147,6 +151,7 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 					order_taken := r[taker].Await_ack()
 					if (order_taken == false) {
 						Order_accept(e, order)
+						ch_remove_order <- order
 					}
 				}
 			}
@@ -157,7 +162,7 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 func timecheck_order_queue(q []def.Order, ch_buttons chan<- def.ButtonEvent, ch_remove_order chan<- def.Order) {
 	for _, c := range q {
 		//time.Sleep(time.Second)
-		if time.Now().Sub(c.Stamp) > 10*time.Second {
+		if time.Now().Sub(c.Stamp) > 25*time.Second {
 			fmt.Println(c.ID," failed")
 			newEvent :=  def.ButtonEvent{Floor: c.Floor, Button: def.BT_Cab}
 			ch_buttons <- newEvent
