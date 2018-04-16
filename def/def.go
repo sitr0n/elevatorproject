@@ -38,6 +38,8 @@ const (
 	WORKSPACES = 23
 
 	STOP_WEIGHT = 5
+	
+	Ack_order_accept = 2
 )
 
 type Elevator struct {

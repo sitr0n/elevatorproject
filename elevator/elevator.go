@@ -85,9 +85,9 @@ func Button_manager(button <- chan def.ButtonEvent, e *def.Elevator, remote *[de
 				if(taker == -1) {
 					Order_accept(e, order)
 					Order_undergoing(e, order, remove_order, remote) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
-					network.Send_ack(remote)
+					network.Send_ack(def.Ack_order_accept, remote)
 				} else {
-					order_taken := remote[taker].Await_ack()
+					order_taken := remote[taker].Await_ack(def.Ack_order_accept)
 					if (order_taken == false) {
 						fmt.Println("BM: ack failed")
 						Order_accept(e, order)

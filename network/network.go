@@ -10,18 +10,26 @@ import (
 )
 
 const(
-	PING = false
-	ACK = true
+	PING 		= false
+	Ack_order 	= 0
+	Ack_state 	= 1
+	Ack_order_accept= 2
 
-	_PING_PERIOD = 1000
+	_PING_PERIOD 	= 1000
 )
+
+type ack struct {
+	received	int
+}
 type Remote struct {
 	id		int
 	address  	string
 	Alive 		bool
 	send		chan interface{}
 	Orderchan	chan def.Order
-	Ackchan		chan bool
+	ackaccept	chan bool
+	ackorder	chan bool
+	ackstate	chan bool
 	Reconnected	chan bool
 	state 		def.Elevator
 }
@@ -29,15 +37,17 @@ var _localip string
 
 func Init(remote_address []string, r *[def.ELEVATORS]Remote) {
 	_localip = get_localip()
-	ch_order := make(chan def.Order, 1080)
+	ch_order := make(chan def.Order, 100)
 	
 	for i := 0; i < def.ELEVATORS; i++ {
 		r[i].address = ip_address(remote_address[i])
 		r[i].id = i
 		r[i].Alive = false
-		r[i].send = make(chan interface{}, 1080)
+		r[i].send = make(chan interface{}, 100)
 		r[i].Orderchan = ch_order
-		r[i].Ackchan = make(chan bool, 1080)
+		r[i].ackaccept = make(chan bool, 100)
+		r[i].ackorder = make(chan bool, 100)
+		r[i].ackstate = make(chan bool, 100)
 		r[i].Reconnected = make (chan bool, 100)
 		
 		go r[i].remote_listener()
@@ -47,29 +57,53 @@ func Init(remote_address []string, r *[def.ELEVATORS]Remote) {
 }
 
 
-func (r *Remote) Await_ack() bool {
+func (r *Remote) Await_ack(expecting int) bool {
 	timeout := make(chan bool)
 	timer_cancel := make(chan bool)
 	go timeout_timer(timer_cancel, timeout)
-	select {
-	case <- r.Ackchan:
-		timer_cancel <- true
-		return true
 	
-	case <- timeout:
-		return false
+	switch expecting {
+	case Ack_order:
+		select {
+		case <- r.ackorder:
+			timer_cancel <- true
+			return true
+		
+		case <- timeout:
+			return false
+		}
+	case Ack_state:
+		select {
+		case <- r.ackstate:
+			timer_cancel <- true
+			return true
+		
+		case <- timeout:
+			return false
+		}
+	case Ack_order_accept:
+		select {
+		case <- r.ackaccept:
+			timer_cancel <- true
+			return true
+		
+		case <- timeout:
+			return false
+		}
+	default:
 	}
+	return false
 }
 
-func Broadcast_state(r *[def.ELEVATORS]Remote) {
+func Broadcast_state(e *def.Elevator, r *[def.ELEVATORS]Remote) {
 	for i := 0; i < def.ELEVATORS; i++ {
-		r[i].send <- r[i].state
+		go r[i].Send_state(*e)
 	}
 }
 
 func Broadcast_order(order def.Order, r *[def.ELEVATORS]Remote) {
 	for i := 0; i < def.ELEVATORS; i++ {
-		r[i].send <- order
+		go r[i].Send_order(order)
 	}
 }
 
@@ -78,13 +112,19 @@ func (r *Remote) Get_state() def.Elevator {
 }
 
 func (r *Remote) Send_order(order def.Order) {
-	r.send <- order
+	for {
+		r.send <- order
+		received := r.Await_ack(Ack_order)
+		if (received == true || r.Alive == false) {
+			break
+		}
+	}
 }
 
 func (r *Remote) Send_state(state def.Elevator) {
 	for {
 		r.send <- state
-		received := r.Await_ack()
+		received := r.Await_ack(Ack_state)
 		if (received == true || r.Alive == false) {
 			break
 		}
@@ -97,13 +137,14 @@ func Send_state_to_all(e def.Elevator, r *[def.ELEVATORS]Remote) {
 	}
 }
 
-func (r *Remote) Send_ack() {
-	r.send <- ACK
+func (r *Remote) Send_ack(msg int) {
+	var response ack = ack{msg}
+	r.send <- response
 }
 
-func Send_ack(r *[def.ELEVATORS]Remote) {
+func Send_ack(msg int, r *[def.ELEVATORS]Remote) {
 	for i := 0; i < def.ELEVATORS; i++ {
-		r[i].send <- ACK
+		r[i].Send_ack(msg)
 	}
 }
 
@@ -116,7 +157,7 @@ func (r *Remote) remote_listener() {
 	
 	var state def.Elevator
 	var order def.Order
-	var ack bool
+	var ack ack
 	const PING_SIZE = 5
 	const ACK_SIZE = 4
 	const STATE_SIZE1 = 79
@@ -140,31 +181,39 @@ func (r *Remote) remote_listener() {
 		case ACK_SIZE:
 			err := json.Unmarshal(buffer[:length], &ack)
 			def.Check(err)
-			r.Ackchan <- ack
+			switch ack.received {
+			case Ack_order:
+				r.ackorder <- true
+			case Ack_state:
+				r.ackstate <- true
+			case Ack_order_accept:
+				r.ackaccept <- true
+			default:
+			}
 			
 		case STATE_SIZE1:
 			err := json.Unmarshal(buffer[:length], &state)
 			def.Check(err)
 			r.state = state
-			r.Send_ack()
+			r.Send_ack(Ack_state)
 	
 		case STATE_SIZE2:
 			err := json.Unmarshal(buffer[:length], &state)
 			def.Check(err)
 			r.state = state
-			r.Send_ack()
+			r.Send_ack(Ack_state)
 			
 		case STATE_SIZE3:
 			err := json.Unmarshal(buffer[:length], &state)
 			def.Check(err)
 			r.state = state
-			r.Send_ack()
+			r.Send_ack(Ack_state)
 		
 		default:
 			err := json.Unmarshal(buffer[:length], &order)
 			def.Check(err)
 			r.Orderchan <- order
-			r.Send_ack()
+			r.Send_ack(Ack_order)
 		}
 	}
 }

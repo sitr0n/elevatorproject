@@ -125,9 +125,9 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 				if(taker == -1) {
 					Order_accept(e, order) 
 					Order_undergoing(e, order, ch_remove_order, r) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
-					network.Send_ack(r)
+					network.Send_ack(def.Ack_order_accept, r)
 				} else {
-					order_taken := r[taker].Await_ack()
+					order_taken := r[taker].Await_ack(def.Ack_order_accept)
 					if (order_taken == false) {
 						fmt.Println("Ack failed")
 						Order_accept(e, order)
@@ -145,9 +145,9 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 				if(taker == -1) {
 					Order_accept(e, order) 
 					Order_undergoing(e, order, ch_remove_order, r) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
-					network.Send_ack(r)
+					network.Send_ack(def.Ack_order_accept, r)
 				} else {
-					order_taken := r[taker].Await_ack()
+					order_taken := r[taker].Await_ack(def.Ack_order_accept)
 					if (order_taken == false) {
 						fmt.Println("Ack failed")
 						Order_accept(e, order)
