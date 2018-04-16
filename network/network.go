@@ -97,7 +97,7 @@ func (r *Remote) Await_ack(expecting int) bool {
 
 func Broadcast_state(e *def.Elevator, r *[def.ELEVATORS]Remote) {
 	for i := 0; i < def.ELEVATORS; i++ {
-		go r[i].Send_state(*e)
+		go r[i].Send_state(e)
 	}
 }
 
@@ -121,7 +121,7 @@ func (r *Remote) Send_order(order def.Order) {
 	}
 }
 
-func (r *Remote) Send_state(state def.Elevator) {
+func (r *Remote) Send_state(state *def.Elevator) {
 	for {
 		r.send <- state
 		fmt.Println("Sending state:", state)
@@ -132,7 +132,7 @@ func (r *Remote) Send_state(state def.Elevator) {
 	}
 }
 
-func Send_state_to_all(e def.Elevator, r *[def.ELEVATORS]Remote) {
+func Send_state_to_all(e *def.Elevator, r *[def.ELEVATORS]Remote) {
 	for i := 0; i < def.ELEVATORS; i++ {
 		go r[i].Send_state(e)
 	}
@@ -246,7 +246,9 @@ func (r *Remote) remote_broadcaster() {
 			encoded, err := json.Marshal(msg)
 			def.Check(err)
 			out_connection.Write(encoded)
-			//fmt.Println("Sending:", msg, "to", r.id)
+			if (r.Alive) {
+				fmt.Println("Sending:", msg)
+			}
 		}
 	}
 }
