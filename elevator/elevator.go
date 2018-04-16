@@ -73,8 +73,6 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 			order := button_event_to_order(event)
 			if (event.Button == def.BT_Cab) {
 				Order_accept(e, order)
-				//add_order <- order
-				//Order_undergoing(e, order, remove_order, remote)
 				fmt.Println("-------------------------------")
 				fmt.Println("Button - Order floor: ", event.Floor)
 				fmt.Println("Button - Elevator stops: ", e.Stops)
@@ -85,12 +83,12 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 				taker := delegate_order(order, *e, *remote)
 				if(taker == -1) {
 					Order_accept(e, order)
-					
 					Order_undergoing(e, order, remove_order, remote) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
 					network.Send_ack(*remote)
 				} else {
 					order_taken := remote[taker].Await_ack()
 					if (order_taken == false) {
+						fmt.Println("BM: ack failed")
 						Order_accept(e, order)
 						Order_undergoing(e, order, remove_order, remote)
 					}

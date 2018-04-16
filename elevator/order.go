@@ -132,8 +132,9 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 				} else {
 					order_taken := r[taker].Await_ack()
 					if (order_taken == false) {
+						fmt.Println("Ack failed")
 						Order_accept(e, order)
-						ch_remove_order <- order
+						Order_undergoing(e, order, ch_remove_order, r)
 					}
 				}
 			}
@@ -150,8 +151,9 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 				} else {
 					order_taken := r[taker].Await_ack()
 					if (order_taken == false) {
+						fmt.Println("Ack failed")
 						Order_accept(e, order)
-						ch_remove_order <- order
+						Order_undergoing(e, order, ch_remove_order, r)
 					}
 				}
 			}
