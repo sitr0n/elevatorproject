@@ -47,6 +47,8 @@ type Elevator struct {
 	Dir MotorDirection
 	CurrentFloor int
 	Stops [4]int
+	EMERG_STOP bool
+	DOOR_OPEN bool
 }
 
 type Order struct {

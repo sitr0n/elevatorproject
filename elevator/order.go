@@ -76,7 +76,7 @@ func Order_undergoing(e *def.Elevator, order def.Order, remove_order chan<- def.
 
 func Order_accept(e *def.Elevator, o def.Order) {
 	e.Stops[o.Floor] = 1
-	if (e.Dir == def.MD_Stop && _DOOR_IS_OPEN == false) {
+	if (e.Dir == def.MD_Stop && e.DOOR_OPEN == false && e.EMERG_STOP == false) {
 		move_to_next_floor(e)
 	}
 	//fmt.Println(e.Stops)
@@ -132,8 +132,9 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 				} else {
 					order_taken := r[taker].Await_ack()
 					if (order_taken == false) {
+						fmt.Println("Ack failed")
 						Order_accept(e, order)
-						ch_remove_order <- order
+						Order_undergoing(e, order, ch_remove_order, r)
 					}
 				}
 			}
@@ -150,8 +151,9 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 				} else {
 					order_taken := r[taker].Await_ack()
 					if (order_taken == false) {
+						fmt.Println("Ack failed")
 						Order_accept(e, order)
-						ch_remove_order <- order
+						Order_undergoing(e, order, ch_remove_order, r)
 					}
 				}
 			}
