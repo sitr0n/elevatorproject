@@ -76,6 +76,7 @@ func Button_manager(button <- chan def.ButtonEvent, e *def.Elevator, remote *[de
 			order := button_event_to_order(event)
 			if (event.Button == def.BT_Cab) {
 				Order_accept(e, order)
+				driver.SetButtonLamp(def.CAB, event.Floor, true)
 				fmt.Println("Cab-Call - Order floor: ", event.Floor)
 			} else { 
 				network.Broadcast_order(order, remote)
@@ -126,6 +127,7 @@ func lights_manager(turn_on_light <-chan def.Order, turn_off_light <-chan def.Or
 	for {
 		select {
 		case order := <-turn_on_light:
+			fmt.Println("turning on light")
 			if (order.Dir == def.MD_Up) {
 				driver.SetButtonLamp(def.UP, order.Floor, true)
 			}
@@ -133,6 +135,7 @@ func lights_manager(turn_on_light <-chan def.Order, turn_off_light <-chan def.Or
 				driver.SetButtonLamp(def.DOWN, order.Floor, true)
 			}
 		case order := <-turn_off_light:
+			fmt.Println("turning off light")
 			if (order.Dir == def.MD_Up) {
 				driver.SetButtonLamp(def.UP, order.Floor, false)
 			}
@@ -182,6 +185,7 @@ func open_door(e *def.Elevator) {
 	driver.SetDoorOpenLamp(true)
 	time.Sleep(5*time.Second)
 	driver.SetDoorOpenLamp(false)
+	driver.SetButtonLamp(def.CAB, e.CurrentFloor, false)
 	e.DOOR_OPEN = false
 }
 

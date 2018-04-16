@@ -51,9 +51,9 @@ func Init(remote_address []string, r *[def.ELEVATORS]Remote) {
 		r[i].Reconnected = make (chan bool, 100)
 		
 		go r[i].remote_listener()
-		//go r[i].remote_broadcaster()
+		go r[i].remote_broadcaster()
 	}
-	//go ping_remotes(r)
+	go ping_remotes(r)
 }
 
 
@@ -210,6 +210,7 @@ func (r *Remote) remote_listener() {
 			r.Send_ack(Ack_state)
 		
 		default:
+			fmt.Println("Recieved size:", length)
 			err := json.Unmarshal(buffer[:length], &order)
 			def.Check(err)
 			r.Orderchan <- order
