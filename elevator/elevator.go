@@ -126,9 +126,19 @@ func lights_manager(turn_on_light <-chan def.Order, turn_off_light <-chan def.Or
 	for {
 		select {
 		case order := <-turn_on_light:
-			driver.SetButtonLamp(order.Dir, order.Floor, true)
+			if (order.Dir == def.MD_Up) {
+				driver.SetButtonLamp(order.Dir-1, order.Floor, true)
+			}
+			if (order.Dir == def.MD_Down){
+				driver.SetButtonLamp(order.Dir+2, order.Floor, true)
+			}
 		case order := <-turn_off_light:
-			driver.SetButtonLamp(order.Dir, order.Floor, false)
+			if (order.Dir == def.MD_Up) {
+				driver.SetButtonLamp(order.Dir-1, order.Floor, false)
+			}
+			if (order.Dir == def.MD_Down){
+				driver.SetButtonLamp(order.Dir+2, order.Floor, false)
+			}
 		}
 	}
 }
