@@ -81,7 +81,7 @@ func Button_manager(button <- chan def.ButtonEvent, e *def.Elevator, remote *[de
 				network.Broadcast_order(order, remote)
 				add_order <- order 
 				turn_on_light <- order
-				taker := delegate_order(order, *e, *remote)
+				taker := delegate_order(order, *e, remote)
 				if(taker == -1) {
 					Order_accept(e, order)
 					Order_undergoing(e, order, remove_order, remote) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
@@ -253,10 +253,25 @@ func load_state(state *def.Elevator) {
 
 func Evaluate(e def.Elevator, o def.Order) int {
 	value := 0
-	distance := o.Floor - e.CurrentFloor
-	if (distance < 0) {
-		distance *= -1
+	distance := 0
+	if (o.Floor > e.CurrentFloor) {
+		distance = o.Floor - e.CurrentFloor
+	} else {
+		distance = e.CurrentFloor - o.Floor
 	}
+
+	for i := 0; i < def.FLOORS; i++ {
+		if (e.Stops[i] > 0) {
+			value += def.STOP_WEIGHT
+		}
+	}
+	fmt.Println("-----------")
+	fmt.Println("Stopweight:", value)
+	fmt.Println("Distance:", distance)
+	fmt.Println("-----------")
+	value += distance
+
+	/*
 	if (e.Dir == def.MD_Up) {
 		if (o.Floor > e.CurrentFloor) {
 			for i := e.CurrentFloor; i < o.Floor; i++ {
@@ -298,6 +313,7 @@ func Evaluate(e def.Elevator, o def.Order) int {
 			value += distance
 		}
 	}
+	*/
 		
 	return value
 }

@@ -31,12 +31,14 @@ func button_event_to_order(be def.ButtonEvent) def.Order {
 	}
 }
 
-func delegate_order(order def.Order, elevator def.Elevator, remote [def.ELEVATORS]network.Remote) int {
+func delegate_order(order def.Order, elevator def.Elevator, remote *[def.ELEVATORS]network.Remote) int {
 	var taker int = 0
-
+	fmt.Println("Checking local:")
 	local_cost := Evaluate(elevator, order)
 	var cost [def.ELEVATORS]int = [def.ELEVATORS]int{}
-
+	fmt.Println("Checking remotes:")
+	fmt.Println("Perceived state:", remote[0].Get_state())
+	fmt.Println("Perceived state:", remote[1].Get_state())
 	var FIRST_SCAN bool = true
 	for i := 0; i < def.ELEVATORS; i++ {
 		cost[i] = Evaluate(remote[i].Get_state(), order)
@@ -51,7 +53,9 @@ func delegate_order(order def.Order, elevator def.Elevator, remote [def.ELEVATOR
 			taker = i
 		}
 	}
-
+	fmt.Println("Remote1 cost:", cost[0])
+	fmt.Println("Remote2 cost:", cost[1])
+	fmt.Println("Local cost:", local_cost)
 	if (local_cost <= cost[taker]) {
 		return -1
 	}
@@ -120,13 +124,15 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 				ch_remove_order <- order
 			} else {
 				ch_turn_on_light <- order
-				taker := delegate_order(order, *e, *r)
+				taker := delegate_order(order, *e, r)
 				ch_add_order <- order
-				if(taker == -1) {
+				if(taker < 0) {
+					fmt.Println("Local cost wins!")
 					Order_accept(e, order) 
 					Order_undergoing(e, order, ch_remove_order, r) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
 					network.Send_ack(def.Ack_order_accept, r)
 				} else {
+					fmt.Println("Remote cost wins!")
 					order_taken := r[taker].Await_ack(def.Ack_order_accept)
 					if (order_taken == false) {
 						fmt.Println("Ack failed")
@@ -140,13 +146,15 @@ func order_handler(r *[def.ELEVATORS]network.Remote, ch_add_order chan<- def.Ord
 				ch_remove_order <- order
 			} else {
 				ch_turn_on_light <- order
-				taker := delegate_order(order, *e, *r)
+				taker := delegate_order(order, *e, r)
 				ch_add_order <- order
-				if(taker == -1) {
+				if(taker < 0) {
+					fmt.Println("Local cost wins!")
 					Order_accept(e, order) 
 					Order_undergoing(e, order, ch_remove_order, r) //ordre er bestemt til å taes av DENNE pcen, så goroutinen for completion startes her
 					network.Send_ack(def.Ack_order_accept, r)
 				} else {
+					fmt.Println("Remote cost wins!")
 					order_taken := r[taker].Await_ack(def.Ack_order_accept)
 					if (order_taken == false) {
 						fmt.Println("Ack failed")

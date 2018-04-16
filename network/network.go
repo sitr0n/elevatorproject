@@ -51,9 +51,9 @@ func Init(remote_address []string, r *[def.ELEVATORS]Remote) {
 		r[i].Reconnected = make (chan bool, 100)
 		
 		go r[i].remote_listener()
-		//go r[i].remote_broadcaster()
+		go r[i].remote_broadcaster()
 	}
-	//go ping_remotes(r)
+	go ping_remotes(r)
 }
 
 
@@ -138,6 +138,14 @@ func Send_state_to_all(e def.Elevator, r *[def.ELEVATORS]Remote) {
 }
 
 func (r *Remote) Send_ack(msg int) {
+	switch msg {
+	case 0:
+		fmt.Println("Sending state received")
+	case 1:
+		fmt.Println("Sending order received")
+	case 2:
+		fmt.Println("Sending order taken!!")
+	}
 	var response ack = ack{msg}
 	r.send <- response
 }
@@ -187,6 +195,7 @@ func (r *Remote) remote_listener() {
 			case Ack_state:
 				r.ackstate <- true
 			case Ack_order_accept:
+				fmt.Println("Remote", r.id, "has confirmed the order!\n")
 				r.ackaccept <- true
 			default:
 			}
@@ -210,6 +219,7 @@ func (r *Remote) remote_listener() {
 			r.Send_ack(Ack_state)
 		
 		default:
+			fmt.Println("Received size:", length)
 			err := json.Unmarshal(buffer[:length], &order)
 			def.Check(err)
 			r.Orderchan <- order
@@ -233,6 +243,7 @@ func (r *Remote) remote_broadcaster() {
 			encoded, err := json.Marshal(msg)
 			def.Check(err)
 			out_connection.Write(encoded)
+			fmt.Println("Sending:", msg, "to", r.id)
 		}
 	}
 }
