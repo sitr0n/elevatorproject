@@ -171,10 +171,12 @@ func Event_manager(f <- chan int, e *def.Elevator, remote *[def.ELEVATORS]networ
 			prev_floor = floor
 
 		case <- remote[0].Reconnected:
-			go remote[0].Send_state(e)
+			fmt.Println("Someone connected... SENDING STATE")
+			network.Send_state_to_all(e, remote)
 		
 		case <- remote[1].Reconnected:
-			go remote[1].Send_state(e)
+			fmt.Println("Someone connected... SENDING STATE")
+			network.Send_state_to_all(e, remote)
 		
 		}
 	}
