@@ -40,6 +40,9 @@ const (
 	STOP_WEIGHT = 5
 	
 	Ack_order_accept = 2
+	UP = 0
+	DOWN = 1
+	CAB = 2
 )
 
 type Elevator struct {

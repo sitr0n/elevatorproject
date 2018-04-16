@@ -33,7 +33,7 @@ func SetMotorDirection(dir def.MotorDirection) {
 	_conn.Write([]byte{1, byte(dir), 0, 0})
 }
 
-func SetButtonLamp(button def.ButtonType, floor int, value bool) {
+func SetButtonLamp(button int, floor int, value bool) { //was ButtonType
 	_mtx.Lock()
 	defer _mtx.Unlock()
 	_conn.Write([]byte{2, byte(button), byte(floor), toByte(value)})
