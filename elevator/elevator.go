@@ -128,7 +128,7 @@ func Button_manager(b <- chan def.ButtonEvent, e *def.Elevator, remote *[def.ELE
 	}
 }
 
-func Event_manager(f <- chan int, ep *def.Elevator, remote *[def.ELEVATORS]network.Remote) {
+func Event_manager(f <- chan int, e *def.Elevator, remote *[def.ELEVATORS]network.Remote) {
 	prev_floor := -1
 	for {
 		select {
@@ -136,17 +136,22 @@ func Event_manager(f <- chan int, ep *def.Elevator, remote *[def.ELEVATORS]netwo
 			if (floor != prev_floor) {
 				driver.SetFloorIndicator(floor)
 				ep.CurrentFloor = floor
-				fmt.Println("Current floor: ", ep.CurrentFloor)
-				if (ep.Stops[floor] > 0) {
-					ep.Stops[floor] = 0
+				fmt.Println("Current floor: ", e.CurrentFloor)
+				if (e.Stops[floor] > 0) {
+					e.Stops[floor] = 0
 					open_door()
 					
 				}
-				move_to_next_floor(ep)
+				move_to_next_floor(e)
 			}
-			Save_state(ep)
+			Save_state(e)
 			prev_floor = floor
 
+		case <- r[0].Reconnected:
+			r[0].Send_state(e)
+		
+		case <- r[1].Reconnected:
+			r[1].Send_state(e)
 		
 		}
 	}
